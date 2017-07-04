@@ -24,6 +24,7 @@
 #include "flash_block.h"
 #include "mcuboot.h"
 #include "product_id.h"
+#include "lwm2m_credentials.h"
 
 #define WAIT_TIME	K_SECONDS(10)
 
@@ -51,8 +52,7 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_PEER_IPV4_ADDR) > 1,
 #define LED_GPIO_PIN		LED0_GPIO_PIN
 #define LED_GPIO_PORT		LED0_GPIO_PORT
 
-#define ENDPOINT_LEN		33
-static char ep_name[ENDPOINT_LEN];
+static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
 static struct net_app_ctx app_ctx;
 static struct device *mcu_dev;
@@ -376,10 +376,20 @@ static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
 	char device_serial_no[10];
+	int ret;
 
 	snprintf(device_serial_no, sizeof(device_serial_no), "%08x",
 			product_id->number);
-	strncpy(ep_name, device_serial_no, ENDPOINT_LEN);
+	/* Check if there is a valid device id stored in the device */
+	ret = lwm2m_get_device_id(flash_dev, ep_name);
+	if (ret) {
+		SYS_LOG_ERR("Fail to read LWM2M Device ID");
+	}
+	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
+		/* No UUID, use the serial number instead */
+		SYS_LOG_WRN("LWM2M Device ID not set, using serial number");
+		strncpy(ep_name, device_serial_no, LWM2M_DEVICE_ID_SIZE);
+	}
 	SYS_LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
 
 	/* Device Object values and callbacks */
