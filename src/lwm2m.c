@@ -17,6 +17,7 @@
 #include <net/lwm2m.h>
 #include <stdio.h>
 #include <version.h>
+#include <sensor.h>
 
 #include "flash_block.h"
 #include "mcuboot.h"
@@ -43,10 +44,13 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_PEER_IPV4_ADDR) > 1,
 #define CLIENT_DEVICE_TYPE	"Zephyr OMA-LWM2M Client"
 #define CLIENT_HW_VER		CONFIG_SOC
 
+#define MCU_TEMP_DEV		"fota-mcu-temp"
+
 #define ENDPOINT_LEN		33
 static char ep_name[ENDPOINT_LEN];
 
 static struct net_app_ctx app_ctx;
+static struct device *mcu_dev;
 
 /*
  * TODO: Find a better way to handle update markers, and if possible
@@ -80,6 +84,54 @@ static struct net_buf_pool *data_udp_pool(void)
 }
 
 extern struct device *flash_dev;
+static struct float32_value temp_float;
+
+static int read_temperature(struct device *temp_dev,
+			    struct float32_value *float_val)
+{
+	__unused const char *name = temp_dev->config->name;
+	struct sensor_value temp_val;
+	int ret;
+
+	ret = sensor_sample_fetch(temp_dev);
+	if (ret) {
+		SYS_LOG_ERR("%s: I/O error: %d", name, ret);
+		return ret;
+	}
+
+	ret = sensor_channel_get(temp_dev, SENSOR_CHAN_TEMP, &temp_val);
+	if (ret) {
+		SYS_LOG_ERR("%s: can't get data: %d", name, ret);
+		return ret;
+	}
+
+	SYS_LOG_DBG("%s: read %d.%d C",
+			name, temp_val.val1, temp_val.val2);
+	float_val->val1 = temp_val.val1;
+	float_val->val2 = temp_val.val2;
+
+	return 0;
+}
+
+static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
+{
+	/* Only object instance 0 is currently used */
+	if (obj_inst_id != 0) {
+		*data_len = 0;
+		return NULL;
+	}
+
+	/*
+	 * No need to check if read was successful, just reuse the
+	 * previous value which is already stored at temp_float.
+	 * This is because there is currently no way to report read_cb
+	 * failures to the LWM2M engine.
+	 */
+	read_temperature(mcu_dev, &temp_float);
+	*data_len = sizeof(temp_float);
+
+	return &temp_float;
+}
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
 {
@@ -240,6 +292,21 @@ cleanup:
 	return ret;
 }
 
+static int init_temp_device(void)
+{
+	mcu_dev = device_get_binding(MCU_TEMP_DEV);
+	SYS_LOG_INF("%s MCU temperature sensor %s",
+			mcu_dev ? "Found" : "Did not find",
+			MCU_TEMP_DEV);
+
+	if (!mcu_dev) {
+		SYS_LOG_ERR("No temperature device found.");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
@@ -268,7 +335,12 @@ static int lwm2m_setup(void)
 	lwm2m_engine_register_exec_callback("5/0/2", firmware_update_cb);
 
 	/* IPSO: Temperature Sensor object */
-	lwm2m_engine_create_obj_inst("3303/0");
+	if (init_temp_device() == 0) {
+		lwm2m_engine_create_obj_inst("3303/0");
+		lwm2m_engine_register_read_callback("3303/0/5700",
+					temp_read_cb);
+		lwm2m_engine_set_string("3303/0/5701", "Cel");
+	}
 
 	/* Reboot work, used when executing update */
 	k_delayed_work_init(&reboot_work, reboot);
