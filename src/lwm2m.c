@@ -18,6 +18,8 @@
 #include <stdio.h>
 #include <version.h>
 #include <sensor.h>
+#include <board.h>
+#include <gpio.h>
 
 #include "flash_block.h"
 #include "mcuboot.h"
@@ -46,11 +48,16 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_PEER_IPV4_ADDR) > 1,
 
 #define MCU_TEMP_DEV		"fota-mcu-temp"
 
+#define LED_GPIO_PIN		LED0_GPIO_PIN
+#define LED_GPIO_PORT		LED0_GPIO_PORT
+
 #define ENDPOINT_LEN		33
 static char ep_name[ENDPOINT_LEN];
 
 static struct net_app_ctx app_ctx;
 static struct device *mcu_dev;
+static struct device *led_dev;
+static u32_t led_current;
 
 /*
  * TODO: Find a better way to handle update markers, and if possible
@@ -131,6 +138,34 @@ static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
 	*data_len = sizeof(temp_float);
 
 	return &temp_float;
+}
+
+/* TODO: Move to a pre write hook that can handle ret codes once available */
+static int led_on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
+			 bool last_block, size_t total_size)
+{
+	int ret = 0;
+	u32_t led_val;
+
+	led_val = *(u8_t *) data;
+	if (led_val != led_current) {
+		ret = gpio_pin_write(led_dev, LED_GPIO_PIN, led_val);
+		if (ret) {
+			/*
+			 * We need an extra hook in LWM2M to better handle
+			 * failures before writing the data value and not in
+			 * post_write_cb, as there is not much that can be
+			 * done here.
+			 */
+			SYS_LOG_ERR("Fail to write to GPIO %d", LED_GPIO_PIN);
+			return ret;
+		}
+		led_current = led_val;
+		/* TODO: Move to be set by the IPSO object itself */
+		lwm2m_engine_set_s32("3311/0/5852", 0);
+	}
+
+	return ret;
 }
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
@@ -307,6 +342,36 @@ static int init_temp_device(void)
 	return 0;
 }
 
+static int init_led_device(void)
+{
+	int ret;
+
+	led_dev = device_get_binding(LED_GPIO_PORT);
+	SYS_LOG_INF("%s LED GPIO port %s",
+			led_dev ? "Found" : "Did not find",
+			LED_GPIO_PORT);
+
+	if (!led_dev) {
+		SYS_LOG_ERR("No LED device found.");
+		return -ENODEV;
+	}
+
+	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN, GPIO_DIR_OUT);
+	if (ret) {
+		SYS_LOG_ERR("Error configuring LED GPIO.");
+		return ret;
+	}
+
+	ret = gpio_pin_write(led_dev, LED_GPIO_PIN, 0);
+	if (ret) {
+		SYS_LOG_ERR("Error setting LED GPIO.");
+		return ret;
+	}
+
+	return 0;
+}
+
+
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
@@ -340,6 +405,13 @@ static int lwm2m_setup(void)
 		lwm2m_engine_register_read_callback("3303/0/5700",
 					temp_read_cb);
 		lwm2m_engine_set_string("3303/0/5701", "Cel");
+	}
+
+	/* IPSO: Light Control object */
+	if (init_led_device() == 0) {
+		lwm2m_engine_create_obj_inst("3311/0");
+		lwm2m_engine_register_post_write_callback("3311/0/5850",
+					led_on_off_cb);
 	}
 
 	/* Reboot work, used when executing update */
