@@ -1,0 +1,109 @@
+# Copyright (c) 2017 Linaro Limited
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+mainmenu "Linaro FOTA configuration"
+
+config ZEPHYR_BASE
+	string
+	option env="ZEPHYR_BASE"
+
+config APPLICATION_BASE
+	string
+	option env="PROJECT_BASE"
+
+source "$ZEPHYR_BASE/Kconfig.zephyr"
+
+config FOTA_DEVICE
+	bool "Enable FOTA device settings"
+	default y
+	select FOTA_DEVICE_SOC_SERIES_KINETIS_K6X if SOC_SERIES_KINETIS_K6X
+	select FOTA_DEVICE_SOC_SERIES_NRF52X if SOC_SERIES_NRF52X
+	select FOTA_DEVICE_SOC_SERIES_STM32F4X if SOC_SERIES_STM32F4X
+	help
+	  Main config to enable device specific settings
+
+config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
+	bool "Kinetis K6x FOTA settings"
+	select NET_L2_ETHERNET
+	select NET_SHELL
+	select NET_IPV4
+	select NET_UDP
+	select NET_APP_SETTINGS
+	default n
+
+config FOTA_DEVICE_SOC_SERIES_NRF52X
+	bool "Nordic Semiconductor nRF52 FOTA settings"
+	select NET_L2_BLUETOOTH
+	select NET_L2_BLUETOOTH_ZEP1656
+	select NET_IPV6
+	select SENSOR
+	select TEMP_NRF5
+	select TEST_RANDOM_GENERATOR
+	default n
+
+config FOTA_DEVICE_SOC_SERIES_STM32F4X
+	bool "STM32F4x FOTA settings"
+	select NET_L2_BLUETOOTH
+	select NET_L2_BLUETOOTH_ZEP1656
+	select NET_IPV6
+	select SENSOR
+	select TEMP_STM32F401X
+	select TEST_RANDOM_GENERATOR
+	default n
+
+config SYS_LOG_FOTA_LEVEL
+	int "FOTA log level"
+	depends on SYS_LOG && FOTA_DEVICE
+	default 0
+	range 0 4
+	help
+	  Set the log level for the FOTA library.
+
+	  The available levels are:
+
+	  - 0 OFF: do not write
+	  - 1 ERROR: only write SYS_LOG_ERR
+	  - 2 WARNING: write SYS_LOG_WRN in addition to previous level
+	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
+	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
+
+config FOTA_BLUEMIX
+	bool "Enable exchanging data with IBM Bluemix via MQTT"
+	depends on NET_TCP
+	default n
+	help
+	  This option adds logic for exchanging MQTT/Bluemix data
+
+config FOTA_BLUEMIX_ORG
+	string "Bluemix organization code"
+	depends on FOTA_BLUEMIX
+	default "mstsez"
+	help
+	  Enter IBM Bluemix organization code for MQTT publish / subscribe
+	  requests
+
+config FOTA_SHELL
+	bool "FOTA shell console"
+	depends on CONSOLE_SHELL
+	default y
+	help
+	  The option adds a new "fota" command to the console shell.
+
+choice
+	prompt "Select IoT device management system"
+	default FOTA_DM_BACKEND_HAWKBIT
+	help
+	  FOTA device management system. Currently, hawkBit is supported.
+
+config FOTA_DM_BACKEND_HAWKBIT
+	bool "Hawkbit Device Management"
+	depends on NET_TCP
+	help
+	  hawkBit is a domain independent back-end framework for rolling
+	  out software updates to constrained edge devices as well as more
+	  powerful controllers and gateways connected to IP based networking
+	  infrastructure.
+
+endchoice

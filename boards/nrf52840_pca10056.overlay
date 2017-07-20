@@ -1,0 +1,14 @@
+/ {
+	chosen {
+		zephyr,code-partition = &slot0_partition;
+	};
+};
+
+&flash0 {
+	partitions {
+		app_state_partition: partition@fd000 {
+			label = "application-state";
+			reg = <0x000FD000 0x00003000>;
+		};
+	};
+};
