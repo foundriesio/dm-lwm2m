@@ -10,5 +10,10 @@
 			label = "application-state";
 			reg = <0x0000c000 0x00004000>;
 		};
+
+		credentials_partition: partition@10000 {
+			label = "lwm2m-credentials";
+			reg = <0x00010000 0x00010000>;
+		};
 	};
 };
