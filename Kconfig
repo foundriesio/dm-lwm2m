@@ -29,8 +29,7 @@ config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	select NET_L2_ETHERNET
 	select NET_SHELL
 	select NET_IPV4
-	select NET_UDP
-	select NET_APP_SETTINGS
+	select NET_APP_NEED_IPV4
 	default n
 
 config FOTA_DEVICE_SOC_SERIES_NRF52X
@@ -68,42 +67,3 @@ config SYS_LOG_FOTA_LEVEL
 	  - 2 WARNING: write SYS_LOG_WRN in addition to previous level
 	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
 	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
-
-config FOTA_BLUEMIX
-	bool "Enable exchanging data with IBM Bluemix via MQTT"
-	depends on NET_TCP
-	default n
-	help
-	  This option adds logic for exchanging MQTT/Bluemix data
-
-config FOTA_BLUEMIX_ORG
-	string "Bluemix organization code"
-	depends on FOTA_BLUEMIX
-	default "mstsez"
-	help
-	  Enter IBM Bluemix organization code for MQTT publish / subscribe
-	  requests
-
-config FOTA_SHELL
-	bool "FOTA shell console"
-	depends on CONSOLE_SHELL
-	default y
-	help
-	  The option adds a new "fota" command to the console shell.
-
-choice
-	prompt "Select IoT device management system"
-	default FOTA_DM_BACKEND_HAWKBIT
-	help
-	  FOTA device management system. Currently, hawkBit is supported.
-
-config FOTA_DM_BACKEND_HAWKBIT
-	bool "Hawkbit Device Management"
-	depends on NET_TCP
-	help
-	  hawkBit is a domain independent back-end framework for rolling
-	  out software updates to constrained edge devices as well as more
-	  powerful controllers and gateways connected to IP based networking
-	  infrastructure.
-
-endchoice

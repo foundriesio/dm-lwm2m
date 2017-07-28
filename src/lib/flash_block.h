@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+#include <flash.h>
+
 /*
  * TODO:
  * create flash_block lifecycle struct which contains:

@@ -10,7 +10,6 @@
 
 #include <misc/stack.h>
 #include <gpio.h>
-#include <sensor.h>
 #include <tc_util.h>
 #include <misc/reboot.h>
 #include <board.h>
@@ -20,19 +19,11 @@
 #include "app_work_queue.h"
 #include "mcuboot.h"
 #include "product_id.h"
+#include "lwm2m.h"
 #if defined(CONFIG_BLUETOOTH)
 #include <bluetooth/conn.h>
 #include "bt_storage.h"
 #include "bt_ipss.h"
-#endif
-#if defined(CONFIG_FOTA_DM_BACKEND_HAWKBIT)
-#include "hawkbit.h"
-#endif
-#if defined(CONFIG_FOTA_BLUEMIX)
-#include "bluemix_temperature.h"
-#endif
-#if defined(CONFIG_NET_TCP)
-#include "tcp.h"
 #endif
 
 /*
@@ -118,7 +109,7 @@ void main(void)
 	tstamp_hook_install();
 	app_wq_init();
 
-	SYS_LOG_INF("Linaro FOTA example application");
+	SYS_LOG_INF("Linaro FOTA LWM2M example application");
 	SYS_LOG_INF("Device: %s, Serial: %x",
 		    product_id_get()->name, product_id_get()->number);
 
@@ -161,35 +152,13 @@ void main(void)
 	_TC_END_RESULT(TC_PASS, "ipss_advertise");
 #endif
 
-#if defined(CONFIG_NET_TCP)
-	TC_PRINT("Initializing TCP\n");
-	if (tcp_init()) {
-		_TC_END_RESULT(TC_FAIL, "tcp_init");
+	TC_PRINT("Initializing LWM2M\n");
+	if (lwm2m_init()) {
+		_TC_END_RESULT(TC_FAIL, "lwm2m_init");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "tcp_init");
-#endif
-
-#if defined(CONFIG_FOTA_DM_BACKEND_HAWKBIT)
-	TC_PRINT("Initializing Hawkbit backend\n");
-	if (hawkbit_init()) {
-		_TC_END_RESULT(TC_FAIL, "hawkbit_init");
-		TC_END_REPORT(TC_FAIL);
-		return;
-	}
-	_TC_END_RESULT(TC_PASS, "hawkbit_init");
-#endif
-
-#if defined(CONFIG_FOTA_BLUEMIX)
-	TC_PRINT("Initializing Bluemix Client service\n");
-	if (bluemix_temperature_start()) {
-		_TC_END_RESULT(TC_FAIL, "bluemix_init");
-		TC_END_REPORT(TC_FAIL);
-		return;
-	}
-	_TC_END_RESULT(TC_PASS, "bluemix_init");
-#endif
+	_TC_END_RESULT(TC_PASS, "lwm2m_init");
 
 	TC_PRINT("Blinking LED\n");
 	k_delayed_work_init(&blink_context.work, blink_handler);
