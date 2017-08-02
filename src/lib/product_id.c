@@ -68,4 +68,4 @@ static int product_id_init(struct device *dev)
 	return 0;
 }
 
-SYS_INIT(product_id_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+SYS_INIT(product_id_init, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_OBJECTS);
