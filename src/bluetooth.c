@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/bt_storage"
+#define SYS_LOG_DOMAIN "fota/bluetooth"
 #define SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
 #include <logging/sys_log.h>
 
@@ -12,12 +12,16 @@
 #include <stddef.h>
 #include <errno.h>
 #include <zephyr.h>
+#include <gpio.h>
+#include <misc/reboot.h>
+#include <init.h>
+#include <soc.h>
+#include <board.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/storage.h>
-
-#include <soc.h>
+#include <bluetooth/conn.h>
 
 #include "product_id.h"
 
@@ -67,7 +71,7 @@ static void set_own_bt_addr(void)
 	bt_addr.a.val[5] = 0xd6;
 }
 
-int bt_storage_init(void)
+static int bt_storage_init(void)
 {
 	static const struct bt_storage storage = {
 		.read = storage_read,
@@ -85,3 +89,49 @@ int bt_storage_init(void)
 
 	return 0;
 }
+
+/* BT LE Connect/Disconnect callbacks */
+static void set_bluetooth_led(bool state)
+{
+#if defined(BT_GPIO_PIN) && defined(BT_GPIO_PORT)
+	struct device *gpio;
+
+	gpio = device_get_binding(BT_GPIO_PORT);
+	gpio_pin_configure(gpio, BT_GPIO_PIN, GPIO_DIR_OUT);
+	gpio_pin_write(gpio, BT_GPIO_PIN, state);
+#endif
+}
+
+static void connected(struct bt_conn *conn, u8_t err)
+{
+	if (err) {
+		SYS_LOG_ERR("BT LE Connection failed: %u", err);
+	} else {
+		SYS_LOG_INF("BT LE Connected");
+		set_bluetooth_led(1);
+	}
+}
+
+static void disconnected(struct bt_conn *conn, u8_t reason)
+{
+	SYS_LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
+	set_bluetooth_led(0);
+	sys_reboot(0);
+}
+
+static struct bt_conn_cb conn_callbacks = {
+	.connected = connected,
+	.disconnected = disconnected,
+};
+
+static int bt_network_init(struct device *dev)
+{
+	/* Storage used to provide a BT MAC based on the serial number */
+	SYS_LOG_DBG("Setting Bluetooth MAC\n");
+	bt_storage_init();
+	bt_conn_cb_register(&conn_callbacks);
+	return 0;
+}
+
+/* last priority in the POST_KERNEL init levels */
+SYS_INIT(bt_network_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
