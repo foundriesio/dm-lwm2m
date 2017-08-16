@@ -26,7 +26,7 @@ struct k_work_q *_app_q = &app_queue;
 
 void app_wq_init(void)
 {
-	k_fifo_init(&_app_q->fifo);
+	k_queue_init(&_app_q->queue);
 }
 
 void app_wq_run(void)
@@ -35,7 +35,7 @@ void app_wq_run(void)
 		struct k_work *work;
 		k_work_handler_t handler;
 
-		work = k_fifo_get(&_app_q->fifo, K_FOREVER);
+		work = k_queue_get(&_app_q->queue, K_FOREVER);
 
 		handler = work->handler;
 
@@ -45,7 +45,7 @@ void app_wq_run(void)
 			handler(work);
 		}
 
-		/* Make sure we don't hog up the CPU if the FIFO never (or
+		/* Make sure we don't hog up the CPU if the QUEUE never (or
 		 * very rarely) gets empty.
 		 */
 		k_yield();
