@@ -17,9 +17,7 @@
 #include <net/lwm2m.h>
 #include <stdio.h>
 #include <version.h>
-#include <sensor.h>
 #include <board.h>
-#include <gpio.h>
 
 #include "flash_block.h"
 #include "mcuboot.h"
@@ -49,17 +47,10 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 #define CLIENT_DEVICE_TYPE	"Zephyr OMA-LWM2M Client"
 #define CLIENT_HW_VER		CONFIG_SOC
 
-#define MCU_TEMP_DEV		"fota-mcu-temp"
-
-#define LED_GPIO_PIN		LED0_GPIO_PIN
-#define LED_GPIO_PORT		LED0_GPIO_PORT
-
 static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
+extern struct device *flash_dev;
 static struct net_app_ctx app_ctx;
-static struct device *mcu_dev;
-static struct device *led_dev;
-static u32_t led_current;
 
 /*
  * TODO: Find a better way to handle update markers, and if possible
@@ -90,84 +81,6 @@ static struct k_mem_slab *tx_udp_slab(void)
 static struct net_buf_pool *data_udp_pool(void)
 {
 	return &lwm2m_data_udp;
-}
-
-extern struct device *flash_dev;
-static struct float32_value temp_float;
-
-static int read_temperature(struct device *temp_dev,
-			    struct float32_value *float_val)
-{
-	__unused const char *name = temp_dev->config->name;
-	struct sensor_value temp_val;
-	int ret;
-
-	ret = sensor_sample_fetch(temp_dev);
-	if (ret) {
-		SYS_LOG_ERR("%s: I/O error: %d", name, ret);
-		return ret;
-	}
-
-	ret = sensor_channel_get(temp_dev, SENSOR_CHAN_TEMP, &temp_val);
-	if (ret) {
-		SYS_LOG_ERR("%s: can't get data: %d", name, ret);
-		return ret;
-	}
-
-	SYS_LOG_DBG("%s: read %d.%d C",
-			name, temp_val.val1, temp_val.val2);
-	float_val->val1 = temp_val.val1;
-	float_val->val2 = temp_val.val2;
-
-	return 0;
-}
-
-static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
-{
-	/* Only object instance 0 is currently used */
-	if (obj_inst_id != 0) {
-		*data_len = 0;
-		return NULL;
-	}
-
-	/*
-	 * No need to check if read was successful, just reuse the
-	 * previous value which is already stored at temp_float.
-	 * This is because there is currently no way to report read_cb
-	 * failures to the LWM2M engine.
-	 */
-	read_temperature(mcu_dev, &temp_float);
-	*data_len = sizeof(temp_float);
-
-	return &temp_float;
-}
-
-/* TODO: Move to a pre write hook that can handle ret codes once available */
-static int led_on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
-			 bool last_block, size_t total_size)
-{
-	int ret = 0;
-	u32_t led_val;
-
-	led_val = *(u8_t *) data;
-	if (led_val != led_current) {
-		ret = gpio_pin_write(led_dev, LED_GPIO_PIN, led_val);
-		if (ret) {
-			/*
-			 * We need an extra hook in LWM2M to better handle
-			 * failures before writing the data value and not in
-			 * post_write_cb, as there is not much that can be
-			 * done here.
-			 */
-			SYS_LOG_ERR("Fail to write to GPIO %d", LED_GPIO_PIN);
-			return ret;
-		}
-		led_current = led_val;
-		/* TODO: Move to be set by the IPSO object itself */
-		lwm2m_engine_set_s32("3311/0/5852", 0);
-	}
-
-	return ret;
 }
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
@@ -329,51 +242,6 @@ cleanup:
 	return ret;
 }
 
-static int init_temp_device(void)
-{
-	mcu_dev = device_get_binding(MCU_TEMP_DEV);
-	SYS_LOG_INF("%s MCU temperature sensor %s",
-			mcu_dev ? "Found" : "Did not find",
-			MCU_TEMP_DEV);
-
-	if (!mcu_dev) {
-		SYS_LOG_ERR("No temperature device found.");
-		return -ENODEV;
-	}
-
-	return 0;
-}
-
-static int init_led_device(void)
-{
-	int ret;
-
-	led_dev = device_get_binding(LED_GPIO_PORT);
-	SYS_LOG_INF("%s LED GPIO port %s",
-			led_dev ? "Found" : "Did not find",
-			LED_GPIO_PORT);
-
-	if (!led_dev) {
-		SYS_LOG_ERR("No LED device found.");
-		return -ENODEV;
-	}
-
-	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN, GPIO_DIR_OUT);
-	if (ret) {
-		SYS_LOG_ERR("Error configuring LED GPIO.");
-		return ret;
-	}
-
-	ret = gpio_pin_write(led_dev, LED_GPIO_PIN, 0);
-	if (ret) {
-		SYS_LOG_ERR("Error setting LED GPIO.");
-		return ret;
-	}
-
-	return 0;
-}
-
-
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
@@ -410,21 +278,6 @@ static int lwm2m_setup(void)
 					     firmware_block_received_cb);
 	lwm2m_firmware_set_write_cb(firmware_block_received_cb);
 	lwm2m_engine_register_exec_callback("5/0/2", firmware_update_cb);
-
-	/* IPSO: Temperature Sensor object */
-	if (init_temp_device() == 0) {
-		lwm2m_engine_create_obj_inst("3303/0");
-		lwm2m_engine_register_read_callback("3303/0/5700",
-					temp_read_cb);
-		lwm2m_engine_set_string("3303/0/5701", "Cel");
-	}
-
-	/* IPSO: Light Control object */
-	if (init_led_device() == 0) {
-		lwm2m_engine_create_obj_inst("3311/0");
-		lwm2m_engine_register_post_write_callback("3311/0/5850",
-					led_on_off_cb);
-	}
 
 	/* Reboot work, used when executing update */
 	k_delayed_work_init(&reboot_work, reboot);
