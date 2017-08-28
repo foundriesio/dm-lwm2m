@@ -10,9 +10,6 @@
 
 #include <zephyr.h>
 #include <misc/reboot.h>
-#include <net/net_core.h>
-#include <net/net_pkt.h>
-#include <net/net_app.h>
 #include <net/net_mgmt.h>
 #include <net/lwm2m.h>
 #include <stdio.h>
@@ -25,6 +22,7 @@
 #include "lwm2m_credentials.h"
 
 #define WAIT_TIME	K_SECONDS(10)
+#define CONNECT_TIME	K_SECONDS(10)
 
 /* Network configuration checks */
 #if defined(CONFIG_NET_IPV6)
@@ -52,7 +50,7 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
 extern struct device *flash_dev;
-static struct net_app_ctx app_ctx;
+static struct lwm2m_ctx app_ctx;
 
 /*
  * TODO: Find a better way to handle update markers, and if possible
@@ -287,22 +285,6 @@ static int lwm2m_setup(void)
 	return 0;
 }
 
-static int setup_net_app_ctx(struct net_app_ctx *ctx, const char *peer)
-{
-	int ret;
-
-	net_app_set_net_pkt_pool(ctx, tx_udp_slab, data_udp_pool);
-
-	ret = net_app_init_udp_client(ctx, NULL, NULL, peer,
-				      CONFIG_LWM2M_PEER_PORT, WAIT_TIME, NULL);
-	if (ret < 0) {
-		SYS_LOG_ERR("Cannot init UDP client (%d)", ret);
-		return ret;
-	}
-
-	return ret;
-}
-
 static void event_iface_up(struct net_mgmt_event_callback *cb,
 		u32_t mgmt_event, struct net_if *iface)
 {
@@ -313,56 +295,28 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 		return;
 	}
 
+	memset(&app_ctx, 0x0, sizeof(app_ctx));
+	app_ctx.net_init_timeout = WAIT_TIME;
+	app_ctx.net_timeout = CONNECT_TIME;
+	app_ctx.tx_slab = tx_udp_slab;
+	app_ctx.data_pool = data_udp_pool;
+
 #if defined(CONFIG_NET_IPV6)
-	ret = setup_net_app_ctx(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR);
-	if (ret < 0) {
-		SYS_LOG_ERR("Fail to setup net_app ctx");
-		return;
-	}
-
-	ret = lwm2m_engine_start(app_ctx.ipv6.ctx);
-	if (ret < 0) {
-		SYS_LOG_ERR("Cannot init LWM2M IPv6 engine (%d)", ret);
-		goto cleanup;
-	}
-
-	ret = lwm2m_rd_client_start(app_ctx.ipv6.ctx, &app_ctx.ipv6.remote,
-				    ep_name);
-	if (ret < 0) {
-		SYS_LOG_ERR("LWM2M init LWM2M IPv6 RD client error (%d)",
-			ret);
-		goto cleanup;
-	}
-
-	SYS_LOG_INF("IPv6 setup complete.");
-#else /* CONFIG_NET_IPV4 */
-	ret = setup_net_app_ctx(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR);
-	if (ret < 0) {
-		SYS_LOG_ERR("Fail to setup net_app ctx");
-		return;
-	}
-
-	ret = lwm2m_engine_start(app_ctx.ipv4.ctx);
-	if (ret < 0) {
-		SYS_LOG_ERR("Cannot init LWM2M IPv4 engine (%d)", ret);
-		goto cleanup;
-	}
-
-	ret = lwm2m_rd_client_start(app_ctx.ipv4.ctx, &app_ctx.ipv4.remote,
-				    ep_name);
-	if (ret < 0) {
-		SYS_LOG_ERR("LWM2M init LWM2M IPv4 RD client error (%d)",
-			ret);
-		goto cleanup;
-	}
-
-	SYS_LOG_INF("IPv4 setup complete.");
-#endif
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
+				    CONFIG_LWM2M_PEER_PORT, ep_name);
+#elif defined(CONFIG_NET_IPV4)
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR,
+				    CONFIG_LWM2M_PEER_PORT, ep_name);
+#else
+	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
 	return;
+#endif
+	if (ret < 0) {
+		SYS_LOG_ERR("LWM2M RD client error (%d)", ret);
+		return;
+	}
 
-cleanup:
-	net_app_close(&app_ctx);
-	net_app_release(&app_ctx);
+	SYS_LOG_INF("setup complete.");
 }
 
 /* TODO: Make it generic, and if possible sharing with hawkbit via library */
