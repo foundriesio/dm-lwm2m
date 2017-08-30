@@ -135,17 +135,9 @@ static int device_reboot_cb(u16_t obj_inst_id)
 static int firmware_update_cb(u16_t obj_inst_id)
 {
 	struct update_counter update_counter;
-	u8_t state = lwm2m_engine_get_u8("5/0/3");
 	int ret = 0;
 
-	if (state != STATE_DOWNLOADED) {
-		SYS_LOG_ERR("Cannot execute update, firmware not downloaded");
-		return -EPERM;
-	}
-
 	SYS_LOG_DBG("Executing firmware update");
-	lwm2m_engine_set_u8("5/0/3", STATE_UPDATING);
-	lwm2m_engine_set_u8("5/0/5", RESULT_DEFAULT);
 
 	/* Bump update counter so it can be verified on the next reboot */
 	ret = lwm2m_update_counter_read(&update_counter);
@@ -169,9 +161,6 @@ static int firmware_update_cb(u16_t obj_inst_id)
 	return 0;
 
 cleanup:
-	lwm2m_engine_set_u8("5/0/3", STATE_DOWNLOADED);
-	lwm2m_engine_set_u8("5/0/5", RESULT_UPDATE_FAILED);
-
 	return ret;
 }
 
@@ -186,8 +175,6 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 
 	if (total_size > FLASH_BANK_SIZE) {
 		SYS_LOG_ERR("Artifact file size too big (%d)", total_size);
-		lwm2m_engine_set_u8("5/0/3", STATE_IDLE);
-		lwm2m_engine_set_u8("5/0/5", RESULT_NO_STORAGE);
 		return -EINVAL;
 	}
 
@@ -236,8 +223,6 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 cleanup:
 	bytes_written = 0;
 	percent_downloaded = 0;
-	lwm2m_engine_set_u8("5/0/3", STATE_IDLE);
-	lwm2m_engine_set_u8("5/0/5", RESULT_INTEGRITY_FAILED);
 
 	return ret;
 }
@@ -274,10 +259,8 @@ static int lwm2m_setup(void)
 	lwm2m_engine_set_u32("3/0/21", (int) (FLASH_BANK_SIZE / 1024));
 
 	/* Firmware Object callbacks */
-	lwm2m_engine_register_post_write_callback("5/0/0",
-					     firmware_block_received_cb);
 	lwm2m_firmware_set_write_cb(firmware_block_received_cb);
-	lwm2m_engine_register_exec_callback("5/0/2", firmware_update_cb);
+	lwm2m_firmware_set_update_cb(firmware_update_cb);
 
 	/* Reboot work, used when executing update */
 	k_delayed_work_init(&reboot_work, reboot);
