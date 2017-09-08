@@ -70,6 +70,7 @@ typedef enum {
 static struct k_delayed_work reboot_work;
 static struct net_mgmt_event_callback cb;
 
+#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
 NET_PKT_TX_SLAB_DEFINE(lwm2m_tx_udp, 5);
 NET_PKT_DATA_POOL_DEFINE(lwm2m_data_udp, 20);
 
@@ -82,6 +83,7 @@ static struct net_buf_pool *data_udp_pool(void)
 {
 	return &lwm2m_data_udp;
 }
+#endif
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
 {
@@ -281,8 +283,10 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	memset(&app_ctx, 0x0, sizeof(app_ctx));
 	app_ctx.net_init_timeout = WAIT_TIME;
 	app_ctx.net_timeout = CONNECT_TIME;
+#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
 	app_ctx.tx_slab = tx_udp_slab;
 	app_ctx.data_pool = data_udp_pool;
+#endif
 
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
