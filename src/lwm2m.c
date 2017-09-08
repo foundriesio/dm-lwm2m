@@ -288,6 +288,9 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	app_ctx.data_pool = data_udp_pool;
 #endif
 
+	/* small delay to finalize networking */
+	k_sleep(K_SECONDS(2));
+
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
 				    CONFIG_LWM2M_PEER_PORT, ep_name);
