@@ -15,11 +15,13 @@
 #include <stdio.h>
 #include <version.h>
 #include <board.h>
+#include <tc_util.h>
 
 #include "flash_block.h"
 #include "mcuboot.h"
 #include "product_id.h"
 #include "lwm2m_credentials.h"
+#include "app_work_queue.h"
 
 #define WAIT_TIME	K_SECONDS(10)
 #define CONNECT_TIME	K_SECONDS(10)
@@ -46,6 +48,20 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 #define CLIENT_FIRMWARE_VER	"1.0"
 #define CLIENT_DEVICE_TYPE	"Zephyr OMA-LWM2M Client"
 #define CLIENT_HW_VER		CONFIG_SOC
+
+#define NUM_TEST_RESULTS	5
+
+struct update_lwm2m_data {
+	int failures;
+
+	/* For test reporting */
+	struct k_work tc_work;
+	u8_t tc_results[NUM_TEST_RESULTS];
+	u8_t tc_count;
+};
+
+static struct update_lwm2m_data update_data;
+static bool tc_logging;
 
 static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
@@ -270,6 +286,76 @@ static int lwm2m_setup(void)
 	return 0;
 }
 
+static void handle_test_result(struct update_lwm2m_data *data, u8_t result)
+{
+	if (data->tc_count >= NUM_TEST_RESULTS) {
+		return;
+	}
+
+	data->tc_results[data->tc_count++] = result;
+
+	if (data->tc_count == NUM_TEST_RESULTS) {
+		app_wq_submit(&data->tc_work);
+	}
+}
+
+static void rd_client_event(struct lwm2m_ctx *client,
+			    enum lwm2m_rd_client_event client_event)
+{
+	switch (client_event) {
+
+	case LWM2M_RD_CLIENT_EVENT_NONE:
+		/* do nothing */
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_FAILURE:
+		if (tc_logging) {
+			_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
+			TC_END_REPORT(TC_FAIL);
+			tc_logging = false;
+		}
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_COMPLETE:
+		/* do nothing here and continue to registration */
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_REGISTRATION_FAILURE:
+		if (tc_logging) {
+			_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
+			TC_END_REPORT(TC_FAIL);
+			tc_logging = false;
+		}
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_REGISTRATION_COMPLETE:
+		if (tc_logging) {
+			_TC_END_RESULT(TC_PASS, "lwm2m_registration");
+			TC_END_REPORT(TC_PASS);
+		}
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_REG_UPDATE_FAILURE:
+		handle_test_result(&update_data, TC_FAIL);
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_REG_UPDATE_COMPLETE:
+		handle_test_result(&update_data, TC_PASS);
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_DEREGISTER_FAILURE:
+		SYS_LOG_DBG("Deregister failure!");
+		/* TODO: handle deregister? */
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_DISCONNECT:
+		SYS_LOG_DBG("Disconnected");
+		/* TODO: handle disconnect? */
+		break;
+
+	}
+}
+
 static void event_iface_up(struct net_mgmt_event_callback *cb,
 		u32_t mgmt_event, struct net_if *iface)
 {
@@ -290,13 +376,16 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 
 	/* small delay to finalize networking */
 	k_sleep(K_SECONDS(2));
+	TC_START("LwM2M registration");
 
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name);
+				    CONFIG_LWM2M_PEER_PORT, ep_name,
+				    rd_client_event);
 #elif defined(CONFIG_NET_IPV4)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name);
+				    CONFIG_LWM2M_PEER_PORT, ep_name,
+				    rd_client_event);
 #else
 	SYS_LOG_ERR("LwM2M client requires IPv4 or IPv6.");
 	return;
@@ -369,6 +458,41 @@ static int lwm2m_image_init(void)
 	return ret;
 }
 
+/*
+ * This work handler prints the results for updating LwM2M registration.
+ */
+static void lwm2m_reg_update_result(struct k_work *work)
+{
+	struct update_lwm2m_data *data =
+		CONTAINER_OF(work, struct update_lwm2m_data, tc_work);
+	/*
+	 * `result_name' is long enough for the function name, '_',
+	 * two digits of test result, and '\0'. If NUM_TEST_RESULTS is
+	 * 100 or more, space for more digits is needed.
+	 */
+	size_t result_len = strlen(__func__) + 1 + 2 + 1;
+	char result_name[result_len];
+	u8_t result, final_result = TC_PASS;
+	size_t i;
+
+	/* Ensure we have enough space to print the result name. */
+	BUILD_ASSERT_MSG(NUM_TEST_RESULTS <= 99,
+			 "result_len is too small to print test number");
+
+	TC_START("Update LwM2M registration");
+	for (i = 0; i < data->tc_count; i++) {
+		result = data->tc_results[i];
+		snprintf(result_name, sizeof(result_name), "%s_%zu",
+			 __func__, i);
+		if (result == TC_FAIL) {
+			final_result = TC_FAIL;
+		}
+		_TC_END_RESULT(result, result_name);
+	}
+	TC_END_REPORT(final_result);
+	tc_logging = false;
+}
+
 int lwm2m_init(void)
 {
 	struct net_if *iface;
@@ -391,6 +515,12 @@ int lwm2m_init(void)
 		SYS_LOG_ERR("Cannot find default network interface!");
 		return -ENETDOWN;
 	}
+
+	/* initialize test case data */
+	update_data.failures = 0;
+	k_work_init(&update_data.tc_work, lwm2m_reg_update_result);
+	update_data.tc_count = 0;
+	tc_logging = true;
 
 	/* Subscribe to NET_IF_UP if interface is not ready */
 	if (!atomic_test_bit(iface->flags, NET_IF_UP)) {
