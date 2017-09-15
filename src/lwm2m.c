@@ -188,6 +188,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 {
 	static int bytes_written;
 	static u8_t percent_downloaded;
+	static u32_t bytes_downloaded;
 	u8_t downloaded;
 	int ret = 0;
 
@@ -196,8 +197,14 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		return -EINVAL;
 	}
 
+	if (!data_len) {
+		SYS_LOG_ERR("Data len is zero, nothing to write.");
+		return -EINVAL;
+	}
+
 	/* Erase bank 1 before starting the write process */
-	if (bytes_written == 0) {
+	if (bytes_downloaded == 0) {
+		SYS_LOG_INF("Download firmware started, erasing second bank");
 		flash_write_protection_set(flash_dev, false);
 		ret = flash_erase(flash_dev, FLASH_AREA_IMAGE_1_OFFSET,
 					FLASH_BANK_SIZE);
@@ -208,19 +215,11 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		}
 	}
 
-	if (data_len > 0) {
-		ret = flash_block_write(flash_dev, FLASH_AREA_IMAGE_1_OFFSET,
-					&bytes_written, data, data_len,
-					last_block);
-		if (ret < 0) {
-			SYS_LOG_ERR("Failed to write flash block");
-			goto cleanup;
-		}
-	}
+	bytes_downloaded += data_len;
 
 	/* display a % downloaded, if it's different */
 	if (total_size) {
-		downloaded = bytes_written * 100 / total_size;
+		downloaded = bytes_downloaded * 100 / total_size;
 	} else {
 		/* Total size is empty when there is only one block */
 		downloaded = 100;
@@ -231,15 +230,28 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		SYS_LOG_INF("%d%%", percent_downloaded);
 	}
 
-	if (last_block) {
-		bytes_written = 0;
-		percent_downloaded = 0;
+	ret = flash_block_write(flash_dev, FLASH_AREA_IMAGE_1_OFFSET,
+				&bytes_written, data, data_len,
+				last_block);
+	if (ret < 0) {
+		SYS_LOG_ERR("Failed to write flash block");
+		goto cleanup;
 	}
 
-	return ret;
+	if (!last_block) {
+		/* Keep going */
+		return ret;
+	}
+
+	if (total_size && (bytes_downloaded != total_size)) {
+		SYS_LOG_ERR("Early last block, downloaded %d, expecting %d",
+				bytes_downloaded, total_size);
+		ret = -EIO;
+	}
 
 cleanup:
 	bytes_written = 0;
+	bytes_downloaded = 0;
 	percent_downloaded = 0;
 
 	return ret;
