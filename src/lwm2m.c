@@ -288,7 +288,7 @@ static int lwm2m_setup(void)
 
 static void handle_test_result(struct update_lwm2m_data *data, u8_t result)
 {
-	if (data->tc_count >= NUM_TEST_RESULTS) {
+	if (!tc_logging || data->tc_count >= NUM_TEST_RESULTS) {
 		return;
 	}
 
@@ -331,7 +331,6 @@ static void rd_client_event(struct lwm2m_ctx *client,
 	case LWM2M_RD_CLIENT_EVENT_REGISTRATION_COMPLETE:
 		if (tc_logging) {
 			_TC_END_RESULT(TC_PASS, "lwm2m_registration");
-			TC_END_REPORT(TC_PASS);
 		}
 		break;
 
@@ -376,7 +375,7 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 
 	/* small delay to finalize networking */
 	k_sleep(K_SECONDS(2));
-	TC_START("LwM2M registration");
+	TC_PRINT("LwM2M registration\n");
 
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
@@ -479,7 +478,7 @@ static void lwm2m_reg_update_result(struct k_work *work)
 	BUILD_ASSERT_MSG(NUM_TEST_RESULTS <= 99,
 			 "result_len is too small to print test number");
 
-	TC_START("Update LwM2M registration");
+	TC_PRINT("Update LwM2M registration\n");
 	for (i = 0; i < data->tc_count; i++) {
 		result = data->tc_results[i];
 		snprintf(result_name, sizeof(result_name), "%s_%zu",
@@ -498,23 +497,35 @@ int lwm2m_init(void)
 	struct net_if *iface;
 	int ret;
 
+	TC_START("LwM2M tests");
+
+	TC_PRINT("Initializing LWM2M Image\n");
 	ret = lwm2m_image_init();
 	if (ret < 0) {
 		SYS_LOG_ERR("Failed to setup image properties (%d)", ret);
+		_TC_END_RESULT(TC_FAIL, "lwm2m_image_init");
+		TC_END_REPORT(TC_FAIL);
 		return ret;
 	}
+	_TC_END_RESULT(TC_PASS, "lwm2m_image_init");
 
+	TC_PRINT("Initializing LWM2M Engine\n");
 	ret = lwm2m_setup();
 	if (ret < 0) {
 		SYS_LOG_ERR("Cannot setup LWM2M fields (%d)", ret);
+		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
+		TC_END_REPORT(TC_FAIL);
 		return ret;
 	}
 
 	iface = net_if_get_default();
 	if (!iface) {
 		SYS_LOG_ERR("Cannot find default network interface!");
+		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
+		TC_END_REPORT(TC_FAIL);
 		return -ENETDOWN;
 	}
+	_TC_END_RESULT(TC_PASS, "lwm2m_setup");
 
 	/* initialize test case data */
 	update_data.failures = 0;

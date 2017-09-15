@@ -185,16 +185,11 @@ void main(void)
 	lwm2m_engine_register_post_write_callback("3311/0/5850",
 			led_on_off_cb);
 	_TC_END_RESULT(TC_PASS, "init_led_device");
+	TC_END_REPORT(TC_PASS);
 
-	TC_PRINT("Initializing LWM2M Engine\n");
 	if (lwm2m_init()) {
-		_TC_END_RESULT(TC_FAIL, "lwm2m_init");
-		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "lwm2m_init");
-
-	TC_END_REPORT(TC_PASS);
 
 	/*
 	 * From this point on, just handle work.
