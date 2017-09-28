@@ -11,6 +11,7 @@
 
 #define LWM2M_DEVICE_ID_SIZE (32 + 1)
 #define LWM2M_DEVICE_TOKEN_SIZE (32 + 1)
+#define LWM2M_DEVICE_TOKEN_HEX_SIZE (16)
 
 /**
  * @brief Get a copy of this device's unique ID.

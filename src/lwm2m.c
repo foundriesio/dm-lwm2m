@@ -12,6 +12,7 @@
 #include <misc/reboot.h>
 #include <net/net_mgmt.h>
 #include <net/lwm2m.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <version.h>
 #include <board.h>
@@ -50,6 +51,33 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 #define CLIENT_HW_VER		CONFIG_SOC
 
 #define NUM_TEST_RESULTS	5
+
+#if defined(CONFIG_NET_APP_DTLS)
+#if !defined(CONFIG_NET_APP_TLS_STACK_SIZE)
+#define CONFIG_NET_APP_TLS_STACK_SIZE          8192
+#endif /* CONFIG_NET_APP_TLS_STACK_SIZE */
+
+#define HOSTNAME "localhost"   /* for cert verification if that is enabled */
+
+/* The result buf size is set to large enough so that we can receive max size
+ * buf back. Note that mbedtls needs also be configured to have equal size
+ * value for its buffer size. See MBEDTLS_SSL_MAX_CONTENT_LEN option in DTLS
+ * config file.
+ */
+#define RESULT_BUF_SIZE 1500
+
+NET_APP_TLS_POOL_DEFINE(dtls_pool, 10);
+
+#define DEFAULT_CLIENT_PSK	"000102030405060708090a0b0c0d0e0f"
+
+/* DTLS information read from credential partition */
+static char client_psk[LWM2M_DEVICE_TOKEN_SIZE];
+static u8_t client_psk_bin[LWM2M_DEVICE_TOKEN_HEX_SIZE];
+
+static u8_t dtls_result[RESULT_BUF_SIZE];
+NET_STACK_DEFINE(NET_APP_DTLS, net_app_dtls_stack,
+		 CONFIG_NET_APP_TLS_STACK_SIZE, CONFIG_NET_APP_TLS_STACK_SIZE);
+#endif /* CONFIG_NET_APP_DTLS */
 
 struct update_lwm2m_data {
 	int failures;
@@ -266,6 +294,40 @@ cleanup:
 	return ret;
 }
 
+#if defined(CONFIG_NET_APP_DTLS)
+static int generate_hex(char *src, u8_t *dst, size_t dst_len)
+{
+	int src_len, i, j = 0;
+	u8_t c = 0;
+
+	src_len = strlen(src);
+	for (i = 0; i < src_len; i++) {
+		if (isdigit(src[i])) {
+			c += src[i] - '0';
+		} else if (isalpha(src[i])) {
+			c += src[i] - (isupper(src[i]) ? 'A' - 10 : 'a' - 10);
+		} else {
+			return -EINVAL;
+		}
+		if (i % 2) {
+			if (j >= dst_len) {
+				return -E2BIG;
+			}
+			dst[j++] = c;
+			c = 0;
+		} else {
+			c = c << 1;
+		}
+	}
+
+	if (j != LWM2M_DEVICE_TOKEN_HEX_SIZE) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+#endif
+
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
@@ -285,6 +347,25 @@ static int lwm2m_setup(void)
 		strncpy(ep_name, device_serial_no, LWM2M_DEVICE_ID_SIZE);
 	}
 	SYS_LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
+
+#if defined(CONFIG_NET_APP_DTLS)
+	/* Check if there is a valid device token stored in the device */
+	ret = lwm2m_get_device_token(flash_dev, client_psk);
+	if (ret || client_psk[LWM2M_DEVICE_TOKEN_SIZE - 1] != '\0') {
+		SYS_LOG_ERR("Fail to read LWM2M Device Token");
+
+		/* No token, use the default key instead */
+		strncpy(client_psk, DEFAULT_CLIENT_PSK,
+			LWM2M_DEVICE_TOKEN_SIZE);
+	}
+
+	ret = generate_hex(client_psk, client_psk_bin,
+			   LWM2M_DEVICE_TOKEN_HEX_SIZE);
+	if (ret) {
+		SYS_LOG_ERR("Failed to generate psk hex: %d", ret);
+		return ret;
+	}
+#endif
 
 	/* Device Object values and callbacks */
 	lwm2m_engine_set_string("3/0/0", CLIENT_MANUFACTURER);
@@ -399,6 +480,19 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	/* small delay to finalize networking */
 	k_sleep(K_SECONDS(2));
 	TC_PRINT("LwM2M registration\n");
+
+#if defined(CONFIG_NET_APP_DTLS)
+	app_ctx.client_psk = client_psk_bin;
+	app_ctx.client_psk_len = LWM2M_DEVICE_TOKEN_HEX_SIZE;
+	app_ctx.client_psk_id = ep_name;
+	app_ctx.client_psk_id_len = strlen(ep_name);
+	app_ctx.cert_host = HOSTNAME;
+	app_ctx.dtls_pool = &dtls_pool;
+	app_ctx.dtls_result_buf = dtls_result;
+	app_ctx.dtls_result_buf_len = RESULT_BUF_SIZE;
+	app_ctx.dtls_stack = net_app_dtls_stack;
+	app_ctx.dtls_stack_len = K_THREAD_STACK_SIZEOF(net_app_dtls_stack);
+#endif /* CONFIG_NET_APP_DTLS */
 
 #if defined(CONFIG_NET_IPV6)
 	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
