@@ -15,16 +15,19 @@ def post(url):
         print response
         return False
 
-def get(url):
+def get(url, raw=False):
     response = requests.get(url, headers=headers)
     if response.status_code == 200 or 201:
         try:
             payload = json.loads(response.content)
         except:
             return None
-        if 'content' in payload:
-            if 'value' in payload['content']:
-                return payload['content']['value']
+        if raw:
+            return payload
+        else:
+            if 'content' in payload:
+                if 'value' in payload['content']:
+                    return payload['content']['value']
     else:
         print response
         return None
@@ -37,7 +40,7 @@ def put(url, data):
         print response
         return False
 
-def run(client, url, hostname, port, monitor):
+def update(client, url, hostname, port, monitor):
     run = True
     while run:
         download_status_url = 'http://%s:%s/api/clients/%s/5/0/3'  % (hostname, port, client)
@@ -49,7 +52,9 @@ def run(client, url, hostname, port, monitor):
             if (put(firmware_url, firmware)):
                 print "requested firmware download for %s" % client
             else:
-                print "failed to request firmware downlaod for %s" % client
+                print "failed to request firmware download for %s" % client
+                run = False
+                return run
             if not monitor:
                 run = False
         if dl_status == 1:
@@ -65,10 +70,14 @@ def run(client, url, hostname, port, monitor):
                     if get(update_status_url) == 1:
                         print "firmware update for %s successful" % client
                         check = False
-                    time.sleep(5)
+                    else:
+                        time.sleep(5)
             else:
                 print "failed to request firmware update execution for %s" % client
+                run = False
+                return run
             run = False
+            return True
         if dl_status == 3:
             print "%s is executing the firmware update" % client
         if dl_status == 4:
@@ -77,10 +86,33 @@ def run(client, url, hostname, port, monitor):
             print "%s is no longer found" % client
         time.sleep(5)
 
+def run(client, url, hostname, port, monitor):
+    if client:
+        ret = update(client, url, hostname, port, monitor)
+        if ret:
+            print "%s update completed" % client
+            exit(0)
+        else:
+            print "%s failed to udpate, aborting..." % client
+            exit(1)
+    else:
+        client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
+        response = get(client_list_url, raw=True)
+        if response:
+            for target in response:
+                if 'endpoint' in target:
+                    ret = update(target['endpoint'], url, hostname, port, monitor)
+                    if ret:
+                         print "%s update completed" % target['endpoint']
+                    else:
+                        print "%s failed to update, aborting..." % target['endpoint']
+                        exit(1)
+            exit(0)
+
 def main():
     description = 'Simple Leshan API wrapper for firmware updates'
     parser = argparse.ArgumentParser(version=__version__, description=description)
-    parser.add_argument('-c', '--client', help='Leshan client id', required=True)
+    parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
     parser.add_argument('-u', '--url', help='URL for client firmware (http:// or coap://)', required=True)
     parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='leshan')
     parser.add_argument('-port', '--port', help='Leshan server port', default='8080')
