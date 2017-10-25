@@ -9,6 +9,7 @@
 #include <init.h>
 #include <soc.h>
 #include <gpio.h>
+#include <misc/printk.h>
 #include "product_id.h"
 
 /*
@@ -59,8 +60,8 @@ static int product_id_init(struct device *dev)
 	ARG_UNUSED(dev);
 
 	for (i = 0; i < DEVICE_ID_LENGTH; i++) {
-		sprintf(buffer + i*8, "%08x",
-			*(((u32_t *)DEVICE_ID_BASE) + i));
+		snprintk(buffer + i*8, sizeof(buffer) - (i*8), "%08x",
+			 *(((u32_t *)DEVICE_ID_BASE) + i));
 	}
 
 	product_id.number = hash32(buffer, DEVICE_ID_LENGTH*8);

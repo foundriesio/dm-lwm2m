@@ -263,8 +263,8 @@ static int lwm2m_setup(void)
 	char device_serial_no[10];
 	int ret;
 
-	snprintf(device_serial_no, sizeof(device_serial_no), "%08x",
-			product_id->number);
+	snprintk(device_serial_no, sizeof(device_serial_no), "%08x",
+		 product_id->number);
 	/* Check if there is a valid device id stored in the device */
 	ret = lwm2m_get_device_id(flash_dev, ep_name);
 	if (ret) {
@@ -493,7 +493,7 @@ static void lwm2m_reg_update_result(struct k_work *work)
 	TC_PRINT("Update LwM2M registration\n");
 	for (i = 0; i < data->tc_count; i++) {
 		result = data->tc_results[i];
-		snprintf(result_name, sizeof(result_name), "%s_%zu",
+		snprintk(result_name, sizeof(result_name), "%s_%zu",
 			 __func__, i);
 		if (result == TC_FAIL) {
 			final_result = TC_FAIL;
