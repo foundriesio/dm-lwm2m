@@ -76,6 +76,7 @@ static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
 	 * failures to the LWM2M engine.
 	 */
 	read_temperature(mcu_dev, &temp_float);
+	lwm2m_engine_set_float32("3303/0/5700", &temp_float);
 	*data_len = sizeof(temp_float);
 
 	return &temp_float;
