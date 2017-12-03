@@ -68,7 +68,17 @@ static void set_own_bt_addr(void)
 	}
 
 	bt_addr.a.val[4] = 0xe7;
+/*
+ * For CONFIG_NET_L2_BT_ZEP1656, the U/L bit of the BT MAC is toggled by Zephyr.
+ * Later that MAC is used to create the 6LOWPAN IPv6 address.  To account for
+ * that, we set 0xd6 here which toggles to 0xd4 later (matching the Linux
+ * gateway configuration for bt0).
+ */
+#if defined(CONFIG_NET_L2_BT_ZEP1656)
 	bt_addr.a.val[5] = 0xd6;
+#else
+	bt_addr.a.val[5] = 0xd4;
+#endif
 }
 
 static int bt_storage_init(void)
