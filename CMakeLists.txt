@@ -11,7 +11,7 @@ set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 # behavior of EXISTS is not well-defined.
 set(CONF_FILE prj.conf)
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/local.conf)
-  set(CONF_FILE ${CONF_FILE} local.conf)
+  set(CONF_FILE ${CONF_FILE} " local.conf")
 endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.conf)
   set(CONF_FILE ${CONF_FILE} " boards/${BOARD}.conf")
