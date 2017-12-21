@@ -31,7 +31,6 @@ config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
 	select NET_L2_BT
-	select NET_L2_BT_ZEP1656
 	select NET_IPV6
 	select NET_APP_NEED_IPV6
 	select SENSOR
@@ -42,7 +41,6 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 config FOTA_DEVICE_SOC_SERIES_STM32F4X
 	bool "STM32F4x FOTA settings"
 	select NET_L2_BT
-	select NET_L2_BT_ZEP1656
 	select NET_IPV6
 	select NET_APP_NEED_IPV6
 	select SENSOR
