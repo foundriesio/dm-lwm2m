@@ -25,8 +25,11 @@
 #include <zephyr.h>
 #include <zephyr/types.h>
 
-/* For internal use, do not touch. */
-extern struct k_work_q *_app_q;
+/*
+ * This is the work queue itself, which can be passed along to other
+ * APIs which submit work.
+ */
+extern struct k_work_q *app_work_q;
 
 /**
  * @brief Initialize the application work queue.
@@ -56,7 +59,7 @@ void app_wq_run(void);
  */
 static inline void app_wq_submit(struct k_work *work)
 {
-	k_work_submit_to_queue(_app_q, work);
+	k_work_submit_to_queue(app_work_q, work);
 }
 
 /**
@@ -69,7 +72,7 @@ static inline void app_wq_submit(struct k_work *work)
 static inline int app_wq_submit_delayed(struct k_delayed_work *work,
 					s32_t delay_ms)
 {
-	return k_delayed_work_submit_to_queue(_app_q, work, delay_ms);
+	return k_delayed_work_submit_to_queue(app_work_q, work, delay_ms);
 }
 
 #endif /* __FOTA_APP_WORK_QUEUE_H__ */

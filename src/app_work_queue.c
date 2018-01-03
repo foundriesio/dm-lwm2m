@@ -22,11 +22,11 @@
 
 static struct k_work_q app_queue;
 
-struct k_work_q *_app_q = &app_queue;
+struct k_work_q *app_work_q = &app_queue;
 
 void app_wq_init(void)
 {
-	k_queue_init(&_app_q->queue);
+	k_queue_init(&app_work_q->queue);
 }
 
 void app_wq_run(void)
@@ -35,7 +35,7 @@ void app_wq_run(void)
 		struct k_work *work;
 		k_work_handler_t handler;
 
-		work = k_queue_get(&_app_q->queue, K_FOREVER);
+		work = k_queue_get(&app_work_q->queue, K_FOREVER);
 
 		handler = work->handler;
 
