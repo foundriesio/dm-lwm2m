@@ -16,7 +16,6 @@ config FOTA_DEVICE
 	default y
 	select FOTA_DEVICE_SOC_SERIES_KINETIS_K6X if SOC_SERIES_KINETIS_K6X
 	select FOTA_DEVICE_SOC_SERIES_NRF52X if SOC_SERIES_NRF52X
-	select FOTA_DEVICE_SOC_SERIES_STM32F4X if SOC_SERIES_STM32F4X
 	help
 	  Main config to enable device specific settings
 
@@ -35,16 +34,6 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select NET_APP_NEED_IPV6
 	select SENSOR
 	select TEMP_NRF5
-	select TEST_RANDOM_GENERATOR
-	default n
-
-config FOTA_DEVICE_SOC_SERIES_STM32F4X
-	bool "STM32F4x FOTA settings"
-	select NET_L2_BT
-	select NET_IPV6
-	select NET_APP_NEED_IPV6
-	select SENSOR
-	select TEMP_STM32F401X
 	select TEST_RANDOM_GENERATOR
 	default n
 
