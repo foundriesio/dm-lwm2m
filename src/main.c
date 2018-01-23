@@ -6,7 +6,7 @@
  */
 
 #define SYS_LOG_DOMAIN "fota/main"
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
+#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
 #include <logging/sys_log.h>
 
 #include <zephyr.h>
