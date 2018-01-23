@@ -39,6 +39,7 @@ target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/lib)
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/app_work_queue.c)
 target_sources(app PRIVATE src/lwm2m.c)
+target_sources(app PRIVATE src/light_control.c)
 target_sources_ifdef(CONFIG_NET_L2_BT        app PRIVATE src/bluetooth.c)
 target_sources_ifdef(CONFIG_SYS_LOG_EXT_HOOK app PRIVATE src/tstamp_log.c)
 
