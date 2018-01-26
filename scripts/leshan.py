@@ -6,18 +6,23 @@ import argparse
 import requests
 import json
 import time
+import logging
 
 __version__ = 1.0
 
 headers = { 'Content-Type': 'application/json'}
 thread_wait = 5
 
+logging.basicConfig(level=logging.INFO,
+                    format='[%(levelname)s] (%(threadName)-10s) %(message)s',
+                    )
+
 def post(url):
     response = requests.post(url, headers=headers)
     if response.status_code == 200 or 201:
         return True
     else:
-        print response
+        logging.error(response)
         return False
 
 def get(url, raw=False):
@@ -34,7 +39,7 @@ def get(url, raw=False):
                 if 'value' in payload['content']:
                     return payload['content']['value']
     else:
-        print response
+        logging.error(response)
         return None
 
 def put(url, data):
@@ -42,7 +47,7 @@ def put(url, data):
     if response.status_code == 200 or 201:
         return True
     else:
-        print response
+        logging.error(response)
         return False
 
 def update(client, url, hostname, port, monitor):
@@ -51,54 +56,54 @@ def update(client, url, hostname, port, monitor):
         download_status_url = 'http://%s:%s/api/clients/%s/5/0/3'  % (hostname, port, client)
         dl_status = get(download_status_url)
         if dl_status == 0:
-            print "%s is ready for firmware update" % client
+            logging.info('%s is ready for firmware update', client)
             firmware = {'id': 1, 'value': url}
             firmware_url = 'http://%s:%s/api/clients/%s/5/0/1' % (hostname, port, client)
             if (put(firmware_url, firmware)):
-                print "requested firmware download for %s" % client
+                logging.info('requested firmware download for %s', client)
             else:
-                print "failed to request firmware download for %s" % client
+                logging.error('failed to request firmware download for %s', client)
                 run = False
                 return run
             if not monitor:
                 run = False
         if dl_status == 1:
-            print "%s is downloading firmware update from %s" % (client, url)
+            logging.info('%s is downloading firmware update from %s', client, url)
         if dl_status == 2:
-            print "%s is ready for update to apply update" % client
+            logging.info('%s is ready for update to apply update', client)
             exec_update_url = 'http://%s:%s/api/clients/%s/5/0/2' % (hostname, port, client)
             if (post(exec_update_url)):
-                print "requested firmware update execution for %s" % client
+                logging.info('requested firmware update execution for %s', client)
                 check = True
                 update_status_url = 'http://%s:%s/api/clients/%s/5/0/5'  % (hostname, port, client)
                 while check:
                     if get(update_status_url) == 1:
-                        print "firmware update for %s successful" % client
+                        logging.info('firmware update for %s successful', client)
                         check = False
                     else:
                         time.sleep(thread_wait)
             else:
-                print "failed to request firmware update execution for %s" % client
+                logging.error('failed to request firmware update execution for %s', client)
                 run = False
                 return run
             run = False
             return True
         if dl_status == 3:
-            print "%s is executing the firmware update" % client
+            logging.info('%s is executing the firmware update', client)
         if dl_status == 4:
-            print "unknown status"
+            logging.error('unknown status')
         if dl_status is None:
-            print "%s is no longer found" % client
+            logging.error('%s is no longer found', client)
         time.sleep(thread_wait)
 
 def run(client, url, hostname, port, monitor, device):
     if client:
         ret = update(client, url, hostname, port, monitor)
         if ret:
-            print "%s update completed" % client
+            logging.info('%s update completed', client)
             exit(0)
         else:
-            print "%s failed to udpate, aborting..." % client
+            logging.error('%s failed to udpate, aborting...', client)
             exit(1)
     else:
         client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
@@ -115,9 +120,9 @@ def run(client, url, hostname, port, monitor, device):
                     if perform_update:
                         ret = update(target['endpoint'], url, hostname, port, monitor)
                         if ret:
-                            print "%s update completed" % target['endpoint']
+                            logging.info('%s update completed', target['endpoint'])
                         else:
-                            print "%s failed to update, aborting..." % target['endpoint']
+                            logging.error('%s failed to update, aborting...', target['endpoint'])
                             exit(1)
             exit(0)
 
