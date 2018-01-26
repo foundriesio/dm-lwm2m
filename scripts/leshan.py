@@ -10,6 +10,7 @@ import time
 __version__ = 1.0
 
 headers = { 'Content-Type': 'application/json'}
+thread_wait = 5
 
 def post(url):
     response = requests.post(url, headers=headers)
@@ -75,7 +76,7 @@ def update(client, url, hostname, port, monitor):
                         print "firmware update for %s successful" % client
                         check = False
                     else:
-                        time.sleep(5)
+                        time.sleep(thread_wait)
             else:
                 print "failed to request firmware update execution for %s" % client
                 run = False
@@ -88,7 +89,7 @@ def update(client, url, hostname, port, monitor):
             print "unknown status"
         if dl_status is None:
             print "%s is no longer found" % client
-        time.sleep(5)
+        time.sleep(thread_wait)
 
 def run(client, url, hostname, port, monitor):
     if client:
