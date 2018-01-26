@@ -91,7 +91,7 @@ def update(client, url, hostname, port, monitor):
             print "%s is no longer found" % client
         time.sleep(thread_wait)
 
-def run(client, url, hostname, port, monitor):
+def run(client, url, hostname, port, monitor, device):
     if client:
         ret = update(client, url, hostname, port, monitor)
         if ret:
@@ -105,13 +105,20 @@ def run(client, url, hostname, port, monitor):
         response = get(client_list_url, raw=True)
         if response:
             for target in response:
+                perform_update = True
                 if 'endpoint' in target:
-                    ret = update(target['endpoint'], url, hostname, port, monitor)
-                    if ret:
-                         print "%s update completed" % target['endpoint']
-                    else:
-                        print "%s failed to update, aborting..." % target['endpoint']
-                        exit(1)
+                    if device:
+                        endpoint_url = 'http://%s:%s/api/clients/%s/3/0/1'  % (hostname, port, target['endpoint'])
+                        endpoint_device = get(endpoint_url)
+                        if (endpoint_device != device):
+                            perform_update = False
+                    if perform_update:
+                        ret = update(target['endpoint'], url, hostname, port, monitor)
+                        if ret:
+                            print "%s update completed" % target['endpoint']
+                        else:
+                            print "%s failed to update, aborting..." % target['endpoint']
+                            exit(1)
             exit(0)
 
 def main():
@@ -122,8 +129,9 @@ def main():
     parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='leshan')
     parser.add_argument('-port', '--port', help='Leshan server port', default='8080')
     parser.add_argument('-m', '--monitor', help='Monitor the update', action='store_true', default=False)
+    parser.add_argument('-d', '--device', help='Device tyepe filter', default=None)
     args = parser.parse_args()
-    run(args.client, args.url, args.hostname, args.port, args.monitor)
+    run(args.client, args.url, args.hostname, args.port, args.monitor, args.device)
 
 if __name__ == '__main__':
     main()
