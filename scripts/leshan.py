@@ -11,7 +11,7 @@ import logging
 import threading
 import datetime
 
-__version__ = 1.0
+__version__ = 1.1
 
 headers = { 'Content-Type': 'application/json'}
 thread_wait = 5
