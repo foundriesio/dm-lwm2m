@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO,
 class UpdateAction:
     # url must always be set by caller
     def __init__(self, client=None, url='url',
-                 hostname='leshan', port=8080, monitor=False):
+                 hostname='mgmt.foundries.io', port=8080, monitor=False):
         self.client = client;
         self.url = url;
         self.hostname = hostname;
@@ -218,7 +218,7 @@ def main():
     parser = argparse.ArgumentParser(version=__version__, description=description)
     parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
     parser.add_argument('-u', '--url', help='URL for client firmware (http:// or coap://)', required=True)
-    parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='leshan')
+    parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='mgmt.foundries.io')
     parser.add_argument('-port', '--port', help='Leshan server port', default='8080')
     parser.add_argument('-m', '--monitor', help='Monitor the update', action='store_true', default=False)
     parser.add_argument('-d', '--device', help='Device type filter', default=None)
