@@ -9,6 +9,9 @@
 #include <logging/sys_log.h>
 
 #include <zephyr.h>
+#include <dfu/mcuboot.h>
+#include <dfu/flash_img.h>
+#include <flash.h>
 #include <misc/reboot.h>
 #include <net/net_mgmt.h>
 #include <net/lwm2m.h>
@@ -18,8 +21,6 @@
 #include <board.h>
 #include <tc_util.h>
 
-#include "flash_block.h"
-#include "mcuboot.h"
 #include "product_id.h"
 #include "lwm2m_credentials.h"
 #include "app_work_queue.h"
@@ -79,6 +80,8 @@ NET_STACK_DEFINE(NET_APP_DTLS, net_app_dtls_stack,
 		 CONFIG_NET_APP_TLS_STACK_SIZE, CONFIG_NET_APP_TLS_STACK_SIZE);
 #endif /* CONFIG_NET_APP_DTLS */
 
+#define FLASH_BANK_SIZE FLASH_AREA_IMAGE_1_SIZE
+
 struct update_lwm2m_data {
 	int failures;
 
@@ -93,7 +96,8 @@ static bool tc_logging;
 
 static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
-extern struct device *flash_dev;
+static struct device *flash_dev;
+static struct flash_img_context dfu_ctx;
 static struct lwm2m_ctx app_ctx;
 
 /* storage location for firmware package */
@@ -203,7 +207,7 @@ static int firmware_update_cb(u16_t obj_inst_id)
 		goto cleanup;
 	}
 
-	boot_trigger_ota();
+	boot_request_upgrade(false);
 
 	k_delayed_work_submit(&reboot_work, MSEC_PER_SEC);
 
@@ -223,7 +227,6 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 				      u8_t *data, u16_t data_len,
 				      bool last_block, size_t total_size)
 {
-	static int bytes_written;
 	static u8_t percent_downloaded;
 	static u32_t bytes_downloaded;
 	u8_t downloaded;
@@ -241,11 +244,9 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 
 	/* Erase bank 1 before starting the write process */
 	if (bytes_downloaded == 0) {
+		flash_img_init(&dfu_ctx, flash_dev);
 		SYS_LOG_INF("Download firmware started, erasing second bank");
-		flash_write_protection_set(flash_dev, false);
-		ret = flash_erase(flash_dev, FLASH_AREA_IMAGE_1_OFFSET,
-					FLASH_BANK_SIZE);
-		flash_write_protection_set(flash_dev, true);
+		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret != 0) {
 			SYS_LOG_ERR("Failed to erase flash bank 1");
 			goto cleanup;
@@ -267,9 +268,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		SYS_LOG_INF("%d%%", percent_downloaded);
 	}
 
-	ret = flash_block_write(flash_dev, FLASH_AREA_IMAGE_1_OFFSET,
-				&bytes_written, data, data_len,
-				last_block);
+	ret = flash_img_buffered_write(&dfu_ctx, data, data_len, last_block);
 	if (ret < 0) {
 		SYS_LOG_ERR("Failed to write flash block");
 		goto cleanup;
@@ -287,7 +286,6 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 	}
 
 cleanup:
-	bytes_written = 0;
 	bytes_downloaded = 0;
 	percent_downloaded = 0;
 
@@ -514,12 +512,20 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	SYS_LOG_INF("setup complete.");
 }
 
-/* TODO: Make it generic, and if possible sharing with hawkbit via library */
 static int lwm2m_image_init(void)
 {
 	int ret = 0;
 	struct update_counter counter;
-	u8_t boot_status;
+	bool image_ok;
+
+	/*
+	 * Initialize the DFU context.
+	 */
+	flash_dev = device_get_binding(FLASH_DRIVER_NAME);
+	if (!flash_dev) {
+		SYS_LOG_ERR("missing flash device %s", FLASH_DRIVER_NAME);
+		return -ENODEV;
+	}
 
 	/* Update boot status and update counter */
 	ret = lwm2m_update_counter_read(&counter);
@@ -529,18 +535,22 @@ static int lwm2m_image_init(void)
 	}
 	SYS_LOG_INF("Update Counter: current %d, update %d",
 			counter.current, counter.update);
-	boot_status = boot_status_read();
-	SYS_LOG_INF("Current boot status %x", boot_status);
-	if (boot_status == BOOT_STATUS_ONGOING) {
-		boot_status_update();
-		SYS_LOG_INF("Updated boot status to %x", boot_status_read());
-		ret = boot_erase_flash_bank(FLASH_AREA_IMAGE_1_OFFSET);
+	image_ok = boot_is_img_confirmed();
+	SYS_LOG_INF("Image is%s confirmed OK", image_ok ? "" : " not");
+	if (!image_ok) {
+		ret = boot_write_img_confirmed();
+		if (ret) {
+			SYS_LOG_ERR("Couldn't confirm this image: %d", ret);
+			return ret;
+		}
+		SYS_LOG_INF("Marked image as OK");
+		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret) {
 			SYS_LOG_ERR("Flash bank erase at offset %x: error %d",
 					FLASH_AREA_IMAGE_1_OFFSET, ret);
 			return ret;
 		}
-		SYS_LOG_DBG("Erased flash bank at offset %x",
+		SYS_LOG_DBG("Erased flash bank 1 at offset %x",
 				FLASH_AREA_IMAGE_1_OFFSET);
 		if (counter.update != -1) {
 			ret = lwm2m_update_counter_update(COUNTER_CURRENT,
@@ -552,7 +562,8 @@ static int lwm2m_image_init(void)
 			}
 			ret = lwm2m_update_counter_read(&counter);
 			if (ret) {
-				SYS_LOG_ERR("Failed read update counter");
+				SYS_LOG_ERR("Failed to read update counter: %d",
+					    ret);
 				return ret;
 			}
 			SYS_LOG_INF("Update Counter updated");

@@ -19,7 +19,6 @@
 /* Local helpers and functions */
 #include "tstamp_log.h"
 #include "app_work_queue.h"
-#include "mcuboot.h"
 #include "product_id.h"
 #include "lwm2m.h"
 
@@ -32,8 +31,6 @@ static struct device *mcu_dev;
 static struct device *led_dev;
 static u32_t led_current;
 static struct float32_value temp_float;
-
-struct device *flash_dev;
 
 static int read_temperature(struct device *temp_dev,
 			    struct float32_value *float_val)

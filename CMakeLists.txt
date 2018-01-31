@@ -28,8 +28,6 @@ include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
 project(NONE)
 
 # Application "library" build configuration. TODO: move these out of this tree.
-target_sources(app PRIVATE src/lib/flash_block.c)
-target_sources(app PRIVATE src/lib/mcuboot.c)
 target_sources(app PRIVATE src/lib/product_id.c)
 target_sources(app PRIVATE src/lib/lwm2m_credentials.c)
 
