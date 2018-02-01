@@ -7,13 +7,6 @@
 #ifndef __FOTA_MCUBOOT_H__
 #define __FOTA_MCUBOOT_H__
 
-/* Flash specific configs */
-#if defined(CONFIG_SOC_SERIES_NRF52X)
-#define FLASH_DRIVER_NAME	CONFIG_SOC_FLASH_NRF5_DEV_NAME
-#elif defined(CONFIG_SOC_SERIES_KINETIS_K6X)
-#define FLASH_DRIVER_NAME	CONFIG_SOC_FLASH_MCUX_DEV_NAME
-#endif
-
 /*
  * The image areas must have equal size. This define refers to it.
  */
