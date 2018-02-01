@@ -512,6 +512,29 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	SYS_LOG_INF("setup complete.");
 }
 
+/* Log the semantic version number of the current image. */
+static void log_img_ver(void)
+{
+	struct mcuboot_img_header header;
+	struct mcuboot_img_sem_ver *ver;
+	int ret;
+
+	ret = boot_read_bank_header(FLASH_AREA_IMAGE_0_OFFSET,
+				    &header, sizeof(header));
+	if (ret) {
+		SYS_LOG_ERR("can't read header: %d", ret);
+		return;
+	} else if (header.mcuboot_version != 1) {
+		SYS_LOG_ERR("unsupported MCUboot version %u",
+			    header.mcuboot_version);
+		return;
+	}
+
+	ver = &header.h.v1.sem_ver;
+	SYS_LOG_INF("image version %u.%u.%u build #%u",
+		    ver->major, ver->minor, ver->revision, ver->build_num);
+}
+
 static int lwm2m_image_init(void)
 {
 	int ret = 0;
@@ -526,6 +549,8 @@ static int lwm2m_image_init(void)
 		SYS_LOG_ERR("missing flash device %s", FLASH_DRIVER_NAME);
 		return -ENODEV;
 	}
+
+	log_img_ver();
 
 	/* Update boot status and update counter */
 	ret = lwm2m_update_counter_read(&counter);
