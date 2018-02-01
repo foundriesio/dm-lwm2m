@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
+ * Copyright (c) 2018 Open Source Foundries Limited
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -159,7 +160,7 @@ void main(void)
 	tstamp_hook_install();
 	app_wq_init();
 
-	SYS_LOG_INF("Linaro FOTA LWM2M example application");
+	SYS_LOG_INF("Open Source Foundries FOTA LWM2M example application");
 	SYS_LOG_INF("Device: %s, Serial: %x",
 		    product_id_get()->name, product_id_get()->number);
 

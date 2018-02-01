@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-mainmenu "Linaro FOTA configuration"
+mainmenu "LWM2M application configuration"
 
 config ZEPHYR_BASE
 	string
