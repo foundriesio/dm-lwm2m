@@ -11,7 +11,7 @@ import logging
 import threading
 import datetime
 
-__version__ = 1.1
+# Script Version 1.1
 
 headers = { 'Content-Type': 'application/json'}
 thread_wait = 5
@@ -215,7 +215,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
 
 def main():
     description = 'Simple Leshan API wrapper for firmware updates'
-    parser = argparse.ArgumentParser(version=__version__, description=description)
+    parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
     parser.add_argument('-u', '--url', help='URL for client firmware (http:// or coap://)', required=True)
     parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='mgmt.foundries.io')
