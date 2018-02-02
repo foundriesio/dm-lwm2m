@@ -37,6 +37,13 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select TEST_RANDOM_GENERATOR
 	default n
 
+config FOTA_LED_GPIO_INVERTED
+	bool "Set this if your hardware has an inverted LED GPIO"
+	default n
+	help
+	  This setting is used to invert the GPIO pin settings when toggling
+	  the "Light Control" LED.
+
 if FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config TEMP_NRF5_NAME

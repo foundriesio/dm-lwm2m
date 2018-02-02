@@ -30,7 +30,9 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 
 	led_val = *(u8_t *) data;
 	if (led_val != led_current) {
-		ret = gpio_pin_write(led_dev, LED_GPIO_PIN, led_val);
+		ret = gpio_pin_write(led_dev, LED_GPIO_PIN,
+				     IS_ENABLED(CONFIG_FOTA_LED_GPIO_INVERTED) ?
+					!led_val : led_val);
 		if (ret) {
 			/*
 			 * We need an extra hook in LWM2M to better handle
@@ -71,7 +73,8 @@ int init_light_control(void)
 		goto fail;
 	}
 
-	ret = gpio_pin_write(led_dev, LED_GPIO_PIN, 0);
+	ret = gpio_pin_write(led_dev, LED_GPIO_PIN,
+			     IS_ENABLED(CONFIG_FOTA_LED_GPIO_INVERTED) ? 1 : 0);
 	if (ret) {
 		SYS_LOG_ERR("Error setting LED GPIO.");
 		goto fail;
