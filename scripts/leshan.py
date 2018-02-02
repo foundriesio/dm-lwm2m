@@ -35,12 +35,16 @@ class UpdateAction:
         self.time_end = 0;
         self.result = False;
         self.requested = False;
+        self.abort_thread = False;
 
 update_list = []
+aborted = False
 
 def signal_handler(signal, frame):
-    print('Script aborted')
-    exit(0)
+    print('Script aborting ...')
+    aborted = True
+    for ua in update_list:
+        ua.abort_thread = True
 
 # add process interrupt handler
 signal.signal(signal.SIGINT, signal_handler)
@@ -95,7 +99,7 @@ def put(url, data):
 
 def update(ua, thread_count):
     ua.time_start = datetime.datetime.now()
-    while True:
+    while ua.abort_thread == False:
         download_status_url = 'http://%s:%s/api/clients/%s/5/0/3' % (ua.hostname, ua.port, ua.client)
         ua.download_status = get(download_status_url)
         if ua.download_status == 0:
@@ -194,7 +198,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
                         t = threading.Thread(name=target['endpoint'], target=update,
                                              args=(ua, thread_count,))
                         t.start()
-            while (thread_count.value > 0):
+            while (aborted == False and thread_count.value > 0):
                 # TODO check timeout?
                 time.sleep(thread_wait)
     # dump update info
@@ -204,7 +208,9 @@ def run(client, url, hostname, port, monitor, device, max_threads):
     for ua in update_list:
         count += 1
         timediff = ua.time_end - ua.time_start
-        if ua.result:
+        if ua.abort_thread == True:
+            logging.info('[%s] update ABORTED (%d seconds)', ua.client, timediff.seconds)
+        elif ua.result:
             logging.info('[%s] update SUCCESS (%d seconds)', ua.client, timediff.seconds)
         else:
             logging.info('[%s] update FAILED (%d seconds)', ua.client, timediff.seconds)
