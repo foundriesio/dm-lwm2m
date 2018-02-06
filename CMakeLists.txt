@@ -21,7 +21,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}-local.conf)
 endif()
 
 # DTC overlays are per-board; each board must define a boards/$BOARD.overlay.
-set(DTC_OVERLAY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/boards)
+set(DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay)
 
 # Mandatory Zephyr boilerplate.
 include($ENV{ZEPHYR_BASE}/cmake/app/boilerplate.cmake NO_POLICY_SCOPE)
