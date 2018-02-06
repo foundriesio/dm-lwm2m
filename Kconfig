@@ -37,6 +37,13 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select TEST_RANDOM_GENERATOR
 	default n
 
+if FOTA_DEVICE_SOC_SERIES_NRF52X
+
+config TEMP_NRF5_NAME
+	default "fota-temp"
+
+endif # FOTA_DEVICE_SOC_SERIES_NRF52X
+
 config SYS_LOG_FOTA_LEVEL
 	int "FOTA log level"
 	depends on SYS_LOG && FOTA_DEVICE

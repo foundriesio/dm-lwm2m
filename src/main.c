@@ -23,7 +23,7 @@
 #include "lwm2m.h"
 
 /* Defines and configs for the IPSO elements */
-#define MCU_TEMP_DEV		"fota-mcu-temp"
+#define MCU_TEMP_DEV		"fota-temp"
 #define LED_GPIO_PIN		LED0_GPIO_PIN
 #define LED_GPIO_PORT		LED0_GPIO_PORT
 
