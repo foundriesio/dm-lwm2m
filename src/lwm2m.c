@@ -544,9 +544,9 @@ static int lwm2m_image_init(void)
 	/*
 	 * Initialize the DFU context.
 	 */
-	flash_dev = device_get_binding(FLASH_DRIVER_NAME);
+	flash_dev = device_get_binding(FLASH_DEV_NAME);
 	if (!flash_dev) {
-		SYS_LOG_ERR("missing flash device %s", FLASH_DRIVER_NAME);
+		SYS_LOG_ERR("missing flash device %s", FLASH_DEV_NAME);
 		return -ENODEV;
 	}
 
