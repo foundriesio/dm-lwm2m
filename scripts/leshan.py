@@ -137,6 +137,9 @@ def update(ua, thread_count):
                     if ua.update_result == 1:
                         logging.info('firmware update successful')
                         check = False
+                    elif ua.update_result > 1:
+                        logging.error('firmware update failed (%d)', ua.update_result)
+                        check = False
                     else:
                         # TODO check timeout / bad update status
                         time.sleep(thread_wait)
