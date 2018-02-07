@@ -132,7 +132,7 @@ def update(ua, thread_count):
             if (post(exec_update_url)):
                 logging.info('requested firmware update execution')
                 check = True
-                while check:
+                while (not ua.abort_thread and check):
                     ua.update_result = get(update_result_url)
                     if ua.update_result == 1:
                         logging.info('firmware update successful')
@@ -190,18 +190,19 @@ def run(client, url, hostname, port, monitor, device, max_threads):
                             perform_update = False
                     if perform_update:
                         # check for max threads and wait if needed
-                        while (thread_count.value >= max_threads):
+                        while (not aborted and thread_count.value >= max_threads):
                             time.sleep(thread_wait)
-                        # bump thread count
-                        thread_count.inc()
-                        # append a new update action
-                        ua = UpdateAction(target['endpoint'], url, hostname, port, monitor)
-                        update_list.append(ua)
-			# create a new thread
-                        t = threading.Thread(name=target['endpoint'], target=update,
-                                             args=(ua, thread_count,))
-                        t.start()
-            while (aborted == False and thread_count.value > 0):
+                        if (not aborted):
+                            # bump thread count
+                            thread_count.inc()
+                            # append a new update action
+                            ua = UpdateAction(target['endpoint'], url, hostname, port, monitor)
+                            update_list.append(ua)
+			    # create a new thread
+                            t = threading.Thread(name=target['endpoint'], target=update,
+                                                 args=(ua, thread_count,))
+                            t.start()
+            while (not aborted and thread_count.value > 0):
                 # TODO check timeout?
                 time.sleep(thread_wait)
     # dump update info
