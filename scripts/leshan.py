@@ -99,8 +99,9 @@ def put(url, data):
 
 def update(ua, thread_count):
     ua.time_start = datetime.datetime.now()
+    download_status_url = 'http://%s:%s/api/clients/%s/5/0/3' % (ua.hostname, ua.port, ua.client)
+    update_result_url = 'http://%s:%s/api/clients/%s/5/0/5' % (ua.hostname, ua.port, ua.client)
     while ua.abort_thread == False:
-        download_status_url = 'http://%s:%s/api/clients/%s/5/0/3' % (ua.hostname, ua.port, ua.client)
         ua.download_status = get(download_status_url)
         if ua.download_status == 0:
             if ua.requested == False:
@@ -119,7 +120,6 @@ def update(ua, thread_count):
                     ua.result = True
                     break
             else:
-                update_result_url = 'http://%s:%s/api/clients/%s/5/0/5' % (ua.hostname, ua.port, ua.client)
                 ua.update_result = get(update_result_url)
                 logging.error('failed to start firmware download (%d)', ua.update_result)
                 ua.result = False
@@ -132,9 +132,9 @@ def update(ua, thread_count):
             if (post(exec_update_url)):
                 logging.info('requested firmware update execution')
                 check = True
-                update_status_url = 'http://%s:%s/api/clients/%s/5/0/5' % (ua.hostname, ua.port, ua.client)
                 while check:
-                    if get(update_status_url) == 1:
+                    ua.update_result = get(update_result_url)
+                    if ua.update_result == 1:
                         logging.info('firmware update successful')
                         check = False
                     else:
@@ -213,7 +213,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
         elif ua.result:
             logging.info('[%s] update SUCCESS (%d seconds)', ua.client, timediff.seconds)
         else:
-            logging.info('[%s] update FAILED (%d seconds)', ua.client, timediff.seconds)
+            logging.info('[%s] update FAILED(%d) (%d seconds)', ua.client, ua.update_result, timediff.seconds)
             result = 1
     timediff = datetime.datetime.now() - start_time
     logging.info('%d update(s) attempted which took %d seconds total', count, timediff.seconds)
