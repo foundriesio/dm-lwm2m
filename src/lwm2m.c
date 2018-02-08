@@ -193,6 +193,7 @@ static int device_reboot_cb(u16_t obj_inst_id)
 	return 0;
 }
 
+#ifdef CONFIG_LWM2M_FIRMWARE_UPDATE_OBJ_SUPPORT
 static int firmware_update_cb(u16_t obj_inst_id)
 {
 	struct update_counter update_counter;
@@ -299,6 +300,7 @@ cleanup:
 
 	return ret;
 }
+#endif
 
 #if defined(CONFIG_NET_APP_DTLS)
 static int generate_hex(char *src, u8_t *dst, size_t dst_len)
@@ -384,11 +386,13 @@ static int lwm2m_setup(void)
 	lwm2m_engine_set_string("3/0/19", KERNEL_VERSION_STRING);
 	lwm2m_engine_set_u32("3/0/21", (int) (FLASH_BANK_SIZE / 1024));
 
+#ifdef CONFIG_LWM2M_FIRMWARE_UPDATE_OBJ_SUPPORT
 	/* Firmware Object callbacks */
 	/* setup data buffer for block-wise transfer */
 	lwm2m_engine_register_pre_write_callback("5/0/0", firmware_get_buf);
 	lwm2m_firmware_set_write_cb(firmware_block_received_cb);
 	lwm2m_firmware_set_update_cb(firmware_update_cb);
+#endif
 
 	/* Reboot work, used when executing update */
 	k_delayed_work_init(&reboot_work, reboot);
