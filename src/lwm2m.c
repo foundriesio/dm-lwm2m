@@ -47,7 +47,6 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 #endif
 
 #define CLIENT_MANUFACTURER	"Zephyr"
-#define CLIENT_FIRMWARE_VER	"1.0"
 #define CLIENT_DEVICE_TYPE	"Zephyr OMA-LWM2M Client"
 #define CLIENT_HW_VER		CONFIG_SOC
 
@@ -102,6 +101,8 @@ static struct lwm2m_ctx app_ctx;
 
 /* storage location for firmware package */
 static u8_t firmware_buf[CONFIG_LWM2M_COAP_BLOCK_SIZE];
+/* storage location for firmware version */
+static char firmware_version[32];
 
 /*
  * TODO: Find a better way to handle update markers, and if possible
@@ -169,6 +170,13 @@ static int lwm2m_update_counter_update(update_counter_t type, u32_t new_value)
 	flash_write_protection_set(flash_dev, true);
 
 	return ret;
+}
+
+static void *firmware_read_cb(u16_t obj_inst_id, size_t *data_len)
+{
+	*data_len = strlen(firmware_version);
+
+	return firmware_version;
 }
 
 static void reboot(struct k_work *work)
@@ -369,7 +377,7 @@ static int lwm2m_setup(void)
 	lwm2m_engine_set_string("3/0/0", CLIENT_MANUFACTURER);
 	lwm2m_engine_set_string("3/0/1", (char *) product_id->name);
 	lwm2m_engine_set_string("3/0/2", device_serial_no);
-	lwm2m_engine_set_string("3/0/3", CLIENT_FIRMWARE_VER);
+	lwm2m_engine_register_read_callback("3/0/3", firmware_read_cb);
 	lwm2m_engine_register_exec_callback("3/0/4", device_reboot_cb);
 	lwm2m_engine_set_string("3/0/17", CLIENT_DEVICE_TYPE);
 	lwm2m_engine_set_string("3/0/18", CLIENT_HW_VER);
@@ -531,8 +539,10 @@ static void log_img_ver(void)
 	}
 
 	ver = &header.h.v1.sem_ver;
-	SYS_LOG_INF("image version %u.%u.%u build #%u",
-		    ver->major, ver->minor, ver->revision, ver->build_num);
+	snprintf(firmware_version, sizeof(firmware_version),
+		 "%u.%u.%u build #%u", ver->major, ver->minor,
+		 ver->revision, ver->build_num);
+	SYS_LOG_INF("image version %s", firmware_version);
 }
 
 static int lwm2m_image_init(void)
