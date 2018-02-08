@@ -314,7 +314,7 @@ static int generate_hex(char *src, u8_t *dst, size_t dst_len)
 			dst[j++] = c;
 			c = 0;
 		} else {
-			c = c << 1;
+			c = c << 4;
 		}
 	}
 
