@@ -19,16 +19,22 @@
 #define LED_GPIO_PORT		LED0_GPIO_PORT
 
 static struct device *led_dev;
-static u32_t led_current;
+static u8_t led_current;
 
 /* TODO: Move to a pre write hook that can handle ret codes once available */
 static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 		     bool last_block, size_t total_size)
 {
 	int ret = 0;
-	u32_t led_val;
+	u8_t led_val;
 
-	led_val = *(u8_t *) data;
+	if (data_len != 1) {
+		SYS_LOG_ERR("Length of on_off callback data is incorrect! (%u)",
+			    data_len);
+		return -EINVAL;
+	}
+
+	led_val = *data;
 	if (led_val != led_current) {
 		ret = gpio_pin_write(led_dev, LED_GPIO_PIN,
 				     IS_ENABLED(CONFIG_FOTA_LED_GPIO_INVERTED) ?
