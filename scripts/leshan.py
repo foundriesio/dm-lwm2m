@@ -80,7 +80,7 @@ def get(url, raw=False):
         try:
             payload = json.loads(response.content)
         except:
-            return None
+            return -1
         if raw:
             return payload
         else:
@@ -89,7 +89,7 @@ def get(url, raw=False):
                     return payload['content']['value']
     else:
         logging.error(response)
-        return None
+        return -1
 
 def put(url, data):
     response = requests.put(url, data=json.dumps(data), headers=headers)
@@ -156,7 +156,7 @@ def update(ua, thread_count):
             logging.info('executing the firmware update')
         if ua.download_status == 4:
             logging.error('unknown status')
-        if ua.download_status is None:
+        if ua.download_status < 0:
             logging.error('no longer found')
         # TODO check timeout?
         time.sleep(thread_wait)
