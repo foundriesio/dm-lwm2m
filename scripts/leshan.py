@@ -31,8 +31,8 @@ class UpdateAction:
         self.monitor = monitor;
         self.download_status = 0;
         self.update_result = 0;
-        self.time_start = 0;
-        self.time_end = 0;
+        self.time_start = datetime.datetime.now();
+        self.time_end = datetime.datetime.now();
         self.result = False;
         self.requested = False;
         self.abort_thread = False;
