@@ -41,6 +41,8 @@ update_list = []
 aborted = False
 
 def signal_handler(signal, frame):
+    global aborted
+
     print('Script aborting ...')
     aborted = True
     for ua in update_list:
@@ -162,6 +164,8 @@ def update(ua, thread_count):
     thread_count.dec()
 
 def run(client, url, hostname, port, monitor, device, max_threads):
+    global aborted
+
     start_time = datetime.datetime.now()
     thread_count = AtomicCounter()
     if client:
@@ -202,7 +206,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
                             t = threading.Thread(name=target['endpoint'], target=update,
                                                  args=(ua, thread_count,))
                             t.start()
-            while (not aborted and thread_count.value > 0):
+            while (thread_count.value > 0):
                 # TODO check timeout?
                 time.sleep(thread_wait)
     # dump update info
