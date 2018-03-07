@@ -66,7 +66,7 @@ class AtomicCounter:
 
 def post(url):
     response = requests.post(url, headers=headers)
-    if response.status_code == 200 or 201:
+    if response.status_code in (200, 201):
         return True
     else:
         logging.error(response)
@@ -74,7 +74,7 @@ def post(url):
 
 def get(url, raw=False):
     response = requests.get(url, headers=headers)
-    if response.status_code == 200 or 201:
+    if response.status_code in (200, 201):
         try:
             payload = json.loads(response.content)
         except:
