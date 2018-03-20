@@ -1,9 +1,3 @@
-/ {
-	chosen {
-		zephyr,code-partition = &slot0_partition;
-	};
-};
-
 &flash0 {
 	partitions {
 		app_state_partition: partition@fd000 {
