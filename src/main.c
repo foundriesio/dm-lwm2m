@@ -24,9 +24,10 @@
 #include "light_control.h"
 
 /* Defines and configs for the IPSO elements */
-#define MCU_TEMP_DEV		"fota-temp"
+#define TEMP_DEV		"fota-temp"
+#define TEMP_CHAN		SENSOR_CHAN_DIE_TEMP
 
-static struct device *mcu_dev;
+static struct device *die_dev;
 static struct float32_value temp_float;
 
 static int read_temperature(struct device *temp_dev,
@@ -42,7 +43,7 @@ static int read_temperature(struct device *temp_dev,
 		return ret;
 	}
 
-	ret = sensor_channel_get(temp_dev, SENSOR_CHAN_TEMP, &temp_val);
+	ret = sensor_channel_get(temp_dev, TEMP_CHAN, &temp_val);
 	if (ret) {
 		SYS_LOG_ERR("%s: can't get data: %d", name, ret);
 		return ret;
@@ -70,7 +71,7 @@ static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
 	 * This is because there is currently no way to report read_cb
 	 * failures to the LWM2M engine.
 	 */
-	read_temperature(mcu_dev, &temp_float);
+	read_temperature(die_dev, &temp_float);
 	lwm2m_engine_set_float32("3303/0/5700", &temp_float);
 	*data_len = sizeof(temp_float);
 
@@ -79,12 +80,12 @@ static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
 
 static int init_temp_device(void)
 {
-	mcu_dev = device_get_binding(MCU_TEMP_DEV);
-	SYS_LOG_INF("%s MCU temperature sensor %s",
-			mcu_dev ? "Found" : "Did not find",
-			MCU_TEMP_DEV);
+	die_dev = device_get_binding(TEMP_DEV);
+	SYS_LOG_INF("%s on-die temperature sensor %s",
+			die_dev ? "Found" : "Did not find",
+			TEMP_DEV);
 
-	if (!mcu_dev) {
+	if (!die_dev) {
 		SYS_LOG_ERR("No temperature device found.");
 		return -ENODEV;
 	}
