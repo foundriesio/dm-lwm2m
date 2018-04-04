@@ -13,6 +13,7 @@
 #include <dfu/flash_img.h>
 #include <flash.h>
 #include <misc/reboot.h>
+#include <net/net_if.h>
 #include <net/net_mgmt.h>
 #include <net/lwm2m.h>
 #include <ctype.h>
@@ -700,8 +701,8 @@ int lwm2m_init(void)
 	update_data.tc_count = 0;
 	tc_logging = true;
 
-	/* Subscribe to NET_IF_UP if interface is not ready */
-	if (!atomic_test_bit(iface->flags, NET_IF_UP)) {
+	/* Subscribe to NET_EVENT_IF_UP if interface is not ready */
+	if (!net_if_is_up(iface)) {
 		net_mgmt_init_event_callback(&cb, event_iface_up,
 				NET_EVENT_IF_UP);
 		net_mgmt_add_event_callback(&cb);
