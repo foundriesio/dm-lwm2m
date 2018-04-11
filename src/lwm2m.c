@@ -21,6 +21,9 @@
 #include <version.h>
 #include <board.h>
 #include <tc_util.h>
+#if defined(CONFIG_MODEM_RECEIVER)
+#include <drivers/modem/modem_receiver.h>
+#endif
 
 #include "product_id.h"
 #include "lwm2m_credentials.h"
@@ -350,6 +353,21 @@ static int lwm2m_setup(void)
 	if (ret) {
 		SYS_LOG_ERR("Fail to read LWM2M Device ID");
 	}
+#if defined(CONFIG_MODEM_RECEIVER)
+	/* use IMEI */
+	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
+		struct mdm_receiver_context *mdm_ctx;
+
+		mdm_ctx = mdm_receiver_context_from_id(0);
+		if (mdm_ctx && mdm_ctx->data_imei) {
+			memset(ep_name, 0, sizeof(ep_name));
+			SYS_LOG_WRN("LWM2M Device ID not set, using IMEI");
+			snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:imei:%s",
+				 mdm_ctx->data_imei);
+			ret = 0;
+		}
+	}
+#endif
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
 		SYS_LOG_WRN("LWM2M Device ID not set, using serial number");
