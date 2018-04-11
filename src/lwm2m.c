@@ -353,7 +353,8 @@ static int lwm2m_setup(void)
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
 		SYS_LOG_WRN("LWM2M Device ID not set, using serial number");
-		strncpy(ep_name, device_serial_no, LWM2M_DEVICE_ID_SIZE);
+		snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:sn:%s",
+			 device_serial_no);
 	}
 	SYS_LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
 
