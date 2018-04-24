@@ -16,7 +16,11 @@
 
 /* Defines for the IPSO light-control elements */
 #define LED_GPIO_PIN		LED0_GPIO_PIN
+#if defined(LED0_GPIO_PORT)
 #define LED_GPIO_PORT		LED0_GPIO_PORT
+#else
+#define LED_GPIO_PORT		LED0_GPIO_CONTROLLER
+#endif
 
 static struct device *led_dev;
 static u8_t led_current;
