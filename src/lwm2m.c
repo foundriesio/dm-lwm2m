@@ -343,7 +343,7 @@ static int generate_hex(char *src, u8_t *dst, size_t dst_len)
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
-	char device_serial_no[10];
+	static char device_serial_no[10];
 	int ret;
 
 	snprintk(device_serial_no, sizeof(device_serial_no), "%08x",
@@ -396,14 +396,26 @@ static int lwm2m_setup(void)
 #endif
 
 	/* Device Object values and callbacks */
-	lwm2m_engine_set_string("3/0/0", CLIENT_MANUFACTURER);
-	lwm2m_engine_set_string("3/0/1", (char *) product_id->name);
-	lwm2m_engine_set_string("3/0/2", device_serial_no);
+	lwm2m_engine_set_res_data("3/0/0", CLIENT_MANUFACTURER,
+				  sizeof(CLIENT_MANUFACTURER),
+				  LWM2M_RES_DATA_FLAG_RO);
+	lwm2m_engine_set_res_data("3/0/1", (char *) product_id->name,
+				  strlen(product_id->name) + 1,
+				  LWM2M_RES_DATA_FLAG_RO);
+	lwm2m_engine_set_res_data("3/0/2", device_serial_no,
+				  sizeof(device_serial_no),
+				  LWM2M_RES_DATA_FLAG_RO);
 	lwm2m_engine_register_read_callback("3/0/3", firmware_read_cb);
 	lwm2m_engine_register_exec_callback("3/0/4", device_reboot_cb);
-	lwm2m_engine_set_string("3/0/17", CLIENT_DEVICE_TYPE);
-	lwm2m_engine_set_string("3/0/18", CLIENT_HW_VER);
-	lwm2m_engine_set_string("3/0/19", KERNEL_VERSION_STRING);
+	lwm2m_engine_set_res_data("3/0/17", CLIENT_DEVICE_TYPE,
+				  sizeof(CLIENT_DEVICE_TYPE),
+				  LWM2M_RES_DATA_FLAG_RO);
+	lwm2m_engine_set_res_data("3/0/18", CLIENT_HW_VER,
+				  sizeof(CLIENT_HW_VER),
+				  LWM2M_RES_DATA_FLAG_RO);
+	lwm2m_engine_set_res_data("3/0/19", KERNEL_VERSION_STRING,
+				  sizeof(KERNEL_VERSION_STRING),
+				  LWM2M_RES_DATA_FLAG_RO);
 	lwm2m_engine_set_u32("3/0/21", (int) (FLASH_BANK_SIZE / 1024));
 
 #ifdef CONFIG_LWM2M_FIRMWARE_UPDATE_OBJ_SUPPORT
