@@ -24,11 +24,11 @@ config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
-	select NET_L2_BT
 	select NET_IPV6
 	select NET_APP_NEED_IPV6
 	select SENSOR
 	select TEMP_NRF5
+	select ENTROPY_NRF5_RNG
 	default n
 
 config FOTA_LED_GPIO_INVERTED
