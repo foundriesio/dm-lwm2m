@@ -36,6 +36,10 @@ void app_wq_run(void)
 		k_work_handler_t handler;
 
 		work = k_queue_get(&app_work_q->queue, K_FOREVER);
+		if (!work) {
+			k_yield();
+			continue;
+		}
 
 		handler = work->handler;
 
