@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.8.2)
+
 # This application has its own Kconfig options.
 set(KCONFIG_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/Kconfig)
 
