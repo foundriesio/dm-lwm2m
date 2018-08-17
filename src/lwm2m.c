@@ -34,16 +34,16 @@
 
 /* Network configuration checks */
 #if defined(CONFIG_NET_IPV6)
-BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_PEER_IPV6_ADDR) > 1,
-		"CONFIG_NET_APP_PEER_IPV6_ADDR must be defined in boards/$(BOARD)-local.conf");
+BUILD_ASSERT_MSG(sizeof(CONFIG_NET_CONFIG_PEER_IPV6_ADDR) > 1,
+		"CONFIG_NET_CONFIG_PEER_IPV6_ADDR must be defined in boards/$(BOARD)-local.conf");
 #endif
 #if defined(CONFIG_NET_IPV4)
 #if !defined(CONFIG_NET_DHCPV4)
-BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_MY_IPV4_ADDR) > 1,
-		"DHCPv4 must be enabled, or CONFIG_NET_APP_MY_IPV4_ADDR must be defined, in boards/$(BOARD)-local.conf");
+BUILD_ASSERT_MSG(sizeof(CONFIG_NET_CONFIG_MY_IPV4_ADDR) > 1,
+		"DHCPv4 must be enabled, or CONFIG_NET_CONFIG_MY_IPV4_ADDR must be defined, in boards/$(BOARD)-local.conf");
 #endif
-BUILD_ASSERT_MSG(sizeof(CONFIG_NET_APP_PEER_IPV4_ADDR) > 1,
-		"CONFIG_NET_APP_PEER_IPV4_ADDR must be defined in boards/$(BOARD)-local.conf");
+BUILD_ASSERT_MSG(sizeof(CONFIG_NET_CONFIG_PEER_IPV4_ADDR) > 1,
+		"CONFIG_NET_CONFIG_PEER_IPV4_ADDR must be defined in boards/$(BOARD)-local.conf");
 #endif
 #if defined(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT)
 BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
@@ -700,11 +700,11 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 #endif /* CONFIG_NET_APP_DTLS */
 
 #if defined(CONFIG_NET_IPV6)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV6_ADDR,
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_CONFIG_PEER_IPV6_ADDR,
 				    CONFIG_LWM2M_PEER_PORT, ep_name,
 				    rd_client_event);
 #elif defined(CONFIG_NET_IPV4)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_APP_PEER_IPV4_ADDR,
+	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_CONFIG_PEER_IPV4_ADDR,
 				    CONFIG_LWM2M_PEER_PORT, ep_name,
 				    rd_client_event);
 #else

@@ -19,7 +19,7 @@ config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	select NET_SHELL
 	select NET_IPV4
 	select NET_UDP
-	select NET_APP_NEED_IPV4
+	select NET_CONFIG_NEED_IPV4
 	default n
 
 if FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
@@ -33,8 +33,8 @@ endif # FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
 	select NET_IPV6
-	select NET_APP_NEED_IPV6
-	select NET_APP_BT_NODE
+	select NET_CONFIG_NEED_IPV6
+	select NET_CONFIG_BT_NODE
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
