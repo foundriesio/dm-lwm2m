@@ -4,11 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-# Leave this at the top unless Zephyr's Kconfig behavior changes to
-# use the first default it finds. (Currently it differs from the Linux
-# behavior, which is to use the first default).
-source "$ZEPHYR_BASE/Kconfig.zephyr"
-
 mainmenu "LWM2M application configuration"
 
 config FOTA_DEVICE
@@ -85,3 +80,7 @@ config SYS_LOG_FOTA_LEVEL
 	  - 2 WARNING: write SYS_LOG_WRN in addition to previous level
 	  - 3 INFO: write SYS_LOG_INF in addition to previous levels
 	  - 4 DEBUG: write SYS_LOG_DBG in addition to previous levels
+
+# Leave this at the bottom: we need to override Zephyr's default settings
+# with some of the values above.
+source "$ZEPHYR_BASE/Kconfig.zephyr"
