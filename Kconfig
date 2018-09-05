@@ -38,6 +38,7 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
+	select NET_SHELL if SOC_NRF52840
 	default n
 
 config FOTA_LED_GPIO_INVERTED
@@ -54,6 +55,42 @@ config TEMP_NRF5_NAME
 
 config BT_DEVICE_NAME
 	default "ZMP IPSP node"
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
+	default "coap://[fe80::d4e7:0:0:1]:5682"
+
+config NET_CONFIG_PEER_IPV6_ADDR
+	default "fe80::d4e7:0:0:1"
+
+config NET_L2_BT
+	default y
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2
+
+config NET_CONFIG_INIT_TIMEOUT
+	default 0
+
+config BT_RX_BUF_COUNT
+	default 10
+
+config BT_RX_BUF_LEN
+	default 128
+
+config BT_CTLR_RX_BUFFERS
+	default 6
+
+config BT_CTLR_TX_BUFFERS
+	default 7
+
+config BT_RX_STACK_SIZE
+	default 2048
+
+config BT_L2CAP_TX_BUF_COUNT
+	default 6
 
 # The following BT configs are not needed in peripheral mode.
 
