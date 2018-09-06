@@ -1,0 +1,28 @@
+/*
+ * DT overlay file for nodes shared across multiple boards
+ * that *must be* shared with the MCUboot build.
+ */
+
+#ifdef CONFIG_SOC_NRF52832
+/*
+ * Hard-code the flash partitions for MCUboot on nRF52832.
+ *
+ * We need more flash for the DTLS use case than some boards provide
+ * in the mainline board DTS.
+ *
+ * This is done unconditionally for all nRF52832 boards for
+ * consistency and to make things easier for CI.
+ */
+&boot_partition {
+	reg = <0x00000000 0x8000>;
+};
+&slot0_partition {
+	reg = <0x00008000 0x34000>;
+};
+&slot1_partition {
+	reg = <0x0003c000 0x34000>;
+};
+&scratch_partition {
+	reg = <0x00070000 0xD000>;
+};
+#endif /* CONFIG_SOC_NRF52832 */
