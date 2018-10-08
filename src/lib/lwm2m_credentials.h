@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __FOTA_LWM2M_CREDENTIALS_H__
-#define __FOTA_LWM2M_CREDENTIALS_H__
+#ifndef FOTA_LWM2M_CREDENTIALS_H__
+#define FOTA_LWM2M_CREDENTIALS_H__
 
 #include <device.h>
 
@@ -40,4 +40,4 @@ int lwm2m_get_device_id(struct device *flash,
 int lwm2m_get_device_token(struct device *flash,
 			   char device_token[LWM2M_DEVICE_TOKEN_SIZE]);
 
-#endif	/* __FOTA_LWM2M_CREDENTIALS_H__ */
+#endif	/* FOTA_LWM2M_CREDENTIALS_H__ */

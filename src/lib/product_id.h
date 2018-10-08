@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef __FOTA_DEVICE_H__
-#define __FOTA_DEVICE_H__
+#ifndef FOTA_DEVICE_H__
+#define FOTA_DEVICE_H__
 
 struct product_id_t {
 	const char *name;
@@ -22,4 +22,4 @@ struct product_id_t {
  */
 const struct product_id_t *product_id_get(void);
 
-#endif	/* __FOTA_DEVICE_H__ */
+#endif	/* FOTA_DEVICE_H__ */
