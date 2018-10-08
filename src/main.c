@@ -19,7 +19,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <tc_util.h>
 
 /* Local helpers and functions */
-#include "tstamp_log.h"
 #include "app_work_queue.h"
 #include "product_id.h"
 #include "lwm2m.h"
@@ -95,7 +94,6 @@ static int init_temp_device(void)
 
 void main(void)
 {
-	tstamp_hook_install();
 	app_wq_init();
 
 	LOG_INF("Open Source Foundries FOTA LWM2M example application");
