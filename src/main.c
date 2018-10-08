@@ -1,13 +1,15 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
- * Copyright (c) 2018 Open Source Foundries Limited
+ * Copyright (c) 2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/main"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_main
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
 #include <sensor.h>
@@ -39,18 +41,17 @@ static int read_temperature(struct device *temp_dev,
 
 	ret = sensor_sample_fetch(temp_dev);
 	if (ret) {
-		SYS_LOG_ERR("%s: I/O error: %d", name, ret);
+		LOG_ERR("%s: I/O error: %d", name, ret);
 		return ret;
 	}
 
 	ret = sensor_channel_get(temp_dev, TEMP_CHAN, &temp_val);
 	if (ret) {
-		SYS_LOG_ERR("%s: can't get data: %d", name, ret);
+		LOG_ERR("%s: can't get data: %d", name, ret);
 		return ret;
 	}
 
-	SYS_LOG_DBG("%s: read %d.%d C",
-			name, temp_val.val1, temp_val.val2);
+	LOG_DBG("%s: read %d.%d C", name, temp_val.val1, temp_val.val2);
 	float_val->val1 = temp_val.val1;
 	float_val->val2 = temp_val.val2;
 
@@ -81,12 +82,11 @@ static void *temp_read_cb(u16_t obj_inst_id, size_t *data_len)
 static int init_temp_device(void)
 {
 	die_dev = device_get_binding(TEMP_DEV);
-	SYS_LOG_INF("%s on-die temperature sensor %s",
-			die_dev ? "Found" : "Did not find",
-			TEMP_DEV);
+	LOG_INF("%s on-die temperature sensor %s",
+		die_dev ? "Found" : "Did not find", TEMP_DEV);
 
 	if (!die_dev) {
-		SYS_LOG_ERR("No temperature device found.");
+		LOG_ERR("No temperature device found.");
 		return -ENODEV;
 	}
 
@@ -98,9 +98,9 @@ void main(void)
 	tstamp_hook_install();
 	app_wq_init();
 
-	SYS_LOG_INF("Open Source Foundries FOTA LWM2M example application");
-	SYS_LOG_INF("Device: %s, Serial: %x",
-		    product_id_get()->name, product_id_get()->number);
+	LOG_INF("Open Source Foundries FOTA LWM2M example application");
+	LOG_INF("Device: %s, Serial: %x",
+		product_id_get()->name, product_id_get()->number);
 
 	TC_START("Running Built in Self Test (BIST)");
 

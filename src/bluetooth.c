@@ -1,12 +1,15 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
+ * Copyright (c) 2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/bluetooth"
-#define SYS_LOG_LEVEL SYS_LOG_LEVEL_DEBUG
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_bluetooth
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr/types.h>
 #include <stddef.h>
@@ -66,16 +69,16 @@ static void set_bluetooth_led(bool state)
 static void connected(struct bt_conn *conn, u8_t err)
 {
 	if (err) {
-		SYS_LOG_ERR("BT LE Connection failed: %u", err);
+		LOG_ERR("BT LE Connection failed: %u", err);
 	} else {
-		SYS_LOG_INF("BT LE Connected");
+		LOG_INF("BT LE Connected");
 		set_bluetooth_led(1);
 	}
 }
 
 static void disconnected(struct bt_conn *conn, u8_t reason)
 {
-	SYS_LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
+	LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
 	set_bluetooth_led(0);
 	sys_reboot(0);
 }
@@ -91,7 +94,7 @@ static int bt_network_init(struct device *dev)
 	int ret = 0;
 
 	/* Storage used to provide a BT MAC based on the serial number */
-	SYS_LOG_DBG("Setting Bluetooth MAC\n");
+	LOG_DBG("Setting Bluetooth MAC\n");
 
 	memset(&bt_addr, 0, sizeof(bt_addr_le_t));
 	bt_addr.type = BT_ADDR_LE_RANDOM;

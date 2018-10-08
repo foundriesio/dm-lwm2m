@@ -1,13 +1,15 @@
 /*
  * Copyright (c) 2016-2017 Linaro Limited
- * Copyright (c) 2017-2018 Open Source Foundries Ltd.
+ * Copyright (c) 2017-2018 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#define SYS_LOG_DOMAIN "fota/light"
-#define SYS_LOG_LEVEL CONFIG_SYS_LOG_FOTA_LEVEL
-#include <logging/sys_log.h>
+#define LOG_MODULE_NAME fota_light
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
 #include <board.h>
@@ -33,8 +35,8 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 	u8_t led_val;
 
 	if (data_len != 1) {
-		SYS_LOG_ERR("Length of on_off callback data is incorrect! (%u)",
-			    data_len);
+		LOG_ERR("Length of on_off callback data is incorrect! (%u)",
+			data_len);
 		return -EINVAL;
 	}
 
@@ -50,7 +52,7 @@ static int on_off_cb(u16_t obj_inst_id, u8_t *data, u16_t data_len,
 			 * post_write_cb, as there is not much that can be
 			 * done here.
 			 */
-			SYS_LOG_ERR("Fail to write to GPIO %d", LED_GPIO_PIN);
+			LOG_ERR("Fail to write to GPIO %d", LED_GPIO_PIN);
 			return ret;
 		}
 
@@ -67,26 +69,25 @@ int init_light_control(void)
 	int ret;
 
 	led_dev = device_get_binding(LED_GPIO_PORT);
-	SYS_LOG_INF("%s LED GPIO port %s",
-			led_dev ? "Found" : "Did not find",
-			LED_GPIO_PORT);
+	LOG_INF("%s LED GPIO port %s", led_dev ? "Found" : "Did not find",
+		LED_GPIO_PORT);
 
 	if (!led_dev) {
-		SYS_LOG_ERR("No LED device found.");
+		LOG_ERR("No LED device found.");
 		ret = -ENODEV;
 		goto fail;
 	}
 
 	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN, GPIO_DIR_OUT);
 	if (ret) {
-		SYS_LOG_ERR("Error configuring LED GPIO.");
+		LOG_ERR("Error configuring LED GPIO.");
 		goto fail;
 	}
 
 	ret = gpio_pin_write(led_dev, LED_GPIO_PIN,
 			     IS_ENABLED(CONFIG_FOTA_LED_GPIO_INVERTED) ? 1 : 0);
 	if (ret) {
-		SYS_LOG_ERR("Error setting LED GPIO.");
+		LOG_ERR("Error setting LED GPIO.");
 		goto fail;
 	}
 
