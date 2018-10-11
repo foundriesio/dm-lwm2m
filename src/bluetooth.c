@@ -57,10 +57,10 @@ static void set_own_bt_addr(bt_addr_le_t *addr)
 /* BT LE Connect/Disconnect callbacks */
 static void set_bluetooth_led(bool state)
 {
-#if defined(BT_GPIO_PIN) && defined(BT_GPIO_PORT)
+#if defined(BT_GPIO_PIN) && defined(BT_GPIO_CONTROLLER)
 	struct device *gpio;
 
-	gpio = device_get_binding(BT_GPIO_PORT);
+	gpio = device_get_binding(BT_GPIO_CONTROLLER);
 	gpio_pin_configure(gpio, BT_GPIO_PIN, GPIO_DIR_OUT);
 	gpio_pin_write(gpio, BT_GPIO_PIN, state);
 #endif
