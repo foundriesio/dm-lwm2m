@@ -125,6 +125,8 @@ typedef enum {
 
 static struct k_delayed_work reboot_work;
 static struct net_mgmt_event_callback cb;
+static struct k_work net_event_work;
+static struct k_work_q *net_event_work_q;
 
 #if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
 NET_PKT_TX_SLAB_DEFINE(lwm2m_tx_udp, 5);
@@ -636,15 +638,9 @@ static void lwm2m_reg_update_result(struct k_work *work)
 	tc_logging = false;
 }
 
-static void event_iface_up(struct net_mgmt_event_callback *cb,
-		u32_t mgmt_event, struct net_if *iface)
+static void lwm2m_start(struct k_work *work)
 {
 	int ret;
-
-	if (!iface) {
-		SYS_LOG_ERR("No network interface specified!");
-		return;
-	}
 
 	TC_START("LwM2M tests");
 
@@ -719,9 +715,18 @@ static void event_iface_up(struct net_mgmt_event_callback *cb,
 	SYS_LOG_INF("setup complete.");
 }
 
-int lwm2m_init(void)
+static void event_iface_up(struct net_mgmt_event_callback *cb,
+		u32_t mgmt_event, struct net_if *iface)
+{
+	k_work_submit_to_queue(net_event_work_q, &net_event_work);
+}
+
+int lwm2m_init(struct k_work_q *work_q)
 {
 	struct net_if *iface;
+
+	k_work_init(&net_event_work, lwm2m_start);
+	net_event_work_q = work_q;
 
 	iface = net_if_get_default();
 	if (!iface) {

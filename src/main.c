@@ -124,7 +124,7 @@ void main(void)
 	_TC_END_RESULT(TC_PASS, "init_light_control");
 	TC_END_REPORT(TC_PASS);
 
-	if (lwm2m_init()) {
+	if (lwm2m_init(app_work_q)) {
 		return;
 	}
 
