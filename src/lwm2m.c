@@ -32,6 +32,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "product_id.h"
 #include "lwm2m_credentials.h"
 #include "app_work_queue.h"
+#ifdef CONFIG_NET_L2_BT
+#include "bluetooth.h"
+#endif
 
 #define WAIT_TIME	K_SECONDS(10)
 #define CONNECT_TIME	K_SECONDS(10)
@@ -192,6 +195,9 @@ static void *firmware_read_cb(u16_t obj_inst_id, size_t *data_len)
 static void reboot(struct k_work *work)
 {
 	LOG_INF("Rebooting device");
+#ifdef CONFIG_NET_L2_BT
+	bt_network_disable();
+#endif
 	LOG_PANIC();
 	sys_reboot(0);
 }

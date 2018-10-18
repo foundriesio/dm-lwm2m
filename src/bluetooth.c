@@ -18,6 +18,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <gpio.h>
 #include <logging/log_ctrl.h>
 #include <misc/reboot.h>
+#include <net/bt.h>
+#include <net/net_if.h>
+#include <net/net_mgmt.h>
 #include <init.h>
 #include <soc.h>
 #include <board.h>
@@ -105,6 +108,27 @@ static int bt_network_init(struct device *dev)
 	bt_conn_cb_register(&conn_callbacks);
 
 	return ret;
+}
+
+int bt_network_disable(void)
+{
+	/* TODO: use a better way to select BT interface */
+	struct net_if *iface = net_if_get_default();
+	int ret;
+
+	ret = net_mgmt(NET_REQUEST_BT_DISCONNECT, iface, NULL, 0);
+	if (ret < 0) {
+		LOG_ERR("Disconnect failed:%d", ret);
+		return ret;
+	}
+
+	ret = net_mgmt(NET_REQUEST_BT_ADVERTISE, iface, "off", 0);
+	if (ret < 0) {
+		LOG_ERR("Error stopping advertise:%d", ret);
+		return ret;
+	}
+
+	return 0;
 }
 
 /* last priority in the POST_KERNEL init levels */
