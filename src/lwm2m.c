@@ -15,6 +15,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <dfu/mcuboot.h>
 #include <dfu/flash_img.h>
 #include <flash.h>
+#include <logging/log_ctrl.h>
 #include <misc/reboot.h>
 #include <net/net_if.h>
 #include <net/net_mgmt.h>
@@ -191,6 +192,7 @@ static void *firmware_read_cb(u16_t obj_inst_id, size_t *data_len)
 static void reboot(struct k_work *work)
 {
 	LOG_INF("Rebooting device");
+	LOG_PANIC();
 	sys_reboot(0);
 }
 

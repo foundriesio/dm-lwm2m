@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <errno.h>
 #include <zephyr.h>
 #include <gpio.h>
+#include <logging/log_ctrl.h>
 #include <misc/reboot.h>
 #include <init.h>
 #include <soc.h>
@@ -80,6 +81,7 @@ static void disconnected(struct bt_conn *conn, u8_t reason)
 {
 	LOG_ERR("BT LE Disconnected (reason %u), rebooting!", reason);
 	set_bluetooth_led(0);
+	LOG_PANIC();
 	sys_reboot(0);
 }
 
