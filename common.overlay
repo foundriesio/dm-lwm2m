@@ -24,12 +24,12 @@
 #ifdef CONFIG_SOC_NRF52840
 &flash0 {
 	partitions {
-		app_state_partition: partition@7d000 {
+		app_state_partition: partition@fd000 {
 			label = "application-state";
 			reg = <0x000fd000 0x2000>;
 		};
 
-		credentials_partition: partition@7f000 {
+		credentials_partition: partition@ff000 {
 			label = "lwm2m-credentials";
 			reg = <0x000ff000 0x1000>;
 		};
