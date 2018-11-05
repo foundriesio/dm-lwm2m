@@ -10,6 +10,7 @@ import time
 import logging
 import threading
 import datetime
+import sys
 
 # Script Version 1.1
 
@@ -48,9 +49,6 @@ def signal_handler(signal, frame):
     for ua in update_list:
         ua.abort_thread = True
 
-# add process interrupt handler
-signal.signal(signal.SIGINT, signal_handler)
-
 class AtomicCounter:
     def __init__(self, initial=0):
         self.value = initial
@@ -78,7 +76,7 @@ def get(url, raw=False):
     response = requests.get(url, headers=headers)
     if response.status_code in (200, 201):
         try:
-            payload = json.loads(response.content)
+            payload = response.json()
         except:
             return -1
         if raw:
@@ -92,8 +90,8 @@ def get(url, raw=False):
         return -1
 
 def put(url, data):
-    response = requests.put(url, data=json.dumps(data), headers=headers)
-    if response.status_code == 200 or 201:
+    response = requests.put(url, json=data, headers=headers)
+    if response.status_code in (200, 201):
         return True
     else:
         logging.error(response)
@@ -176,10 +174,10 @@ def run(client, url, hostname, port, monitor, device, max_threads):
         update(ua, thread_count)
         if ua.result:
             logging.info('%s update completed', client)
-            exit(0)
+            sys.exit(0)
         else:
             logging.error('%s failed to udpate, aborting...', client)
-            exit(1)
+            sys.exit(1)
     else:
         client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
         response = get(client_list_url, raw=True)
@@ -225,9 +223,12 @@ def run(client, url, hostname, port, monitor, device, max_threads):
             result = 1
     timediff = datetime.datetime.now() - start_time
     logging.info('%d update(s) attempted which took %d seconds total', count, timediff.seconds)
-    exit(result)
+    sys.exit(result)
 
 def main():
+    # add process interrupt handler
+    signal.signal(signal.SIGINT, signal_handler)
+
     description = 'Simple Leshan API wrapper for firmware updates'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
