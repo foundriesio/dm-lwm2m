@@ -23,7 +23,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <net/net_mgmt.h>
 #include <init.h>
 #include <soc.h>
-#include <board.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>

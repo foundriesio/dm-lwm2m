@@ -12,7 +12,6 @@
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 #include <zephyr.h>
-#include <board.h>
 #include <gpio.h>
 #include <net/lwm2m.h>
 

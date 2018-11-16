@@ -23,7 +23,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <ctype.h>
 #include <stdio.h>
 #include <version.h>
-#include <board.h>
 #include <tc_util.h>
 #if defined(CONFIG_MODEM_RECEIVER)
 #include <drivers/modem/modem_receiver.h>
