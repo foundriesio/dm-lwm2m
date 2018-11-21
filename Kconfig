@@ -34,7 +34,6 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
 	select NET_IPV6
 	select NET_CONFIG_NEED_IPV6
-	select NET_CONFIG_BT_NODE
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
@@ -52,6 +51,17 @@ if FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config TEMP_NRF5_NAME
 	default "fota-temp"
+
+if !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
+
+config BT
+	default y
+
+config BT_CTLR
+	default y
+
+config NET_CONFIG_BT_NODE
+	default y
 
 config BT_DEVICE_NAME
 	default "ZMP IPSP node"
@@ -99,6 +109,8 @@ config BT_CTLR_CONN_PARAM_REQ
 
 config BT_CTLR_ADV_EXT
 	default n
+
+endif # !CONFIG_NET_L2_OPENTHREAD && !CONFIG_NET_L2_IEEE802154
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
 
