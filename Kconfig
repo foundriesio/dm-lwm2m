@@ -47,6 +47,16 @@ config FOTA_LED_GPIO_INVERTED
 	  This setting is used to invert the GPIO pin settings when toggling
 	  the "Light Control" LED.
 
+config FOTA_ERASE_PROGRESSIVELY
+	bool "Erase flash progressively when updating/receiving new firmware"
+	default y if SOC_NRF52840
+	help
+	 If enabled, flash is erased as necessary when receiving and marking
+         new firmware as ok, instead of erasing the whole image slot at once.
+         This is necessary on some hardware that has long erase times, to
+         prevent long wait times at various stages where large erases are
+         performed.
+
 if FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config TEMP_NRF5_NAME

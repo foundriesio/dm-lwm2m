@@ -252,6 +252,9 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 				      u8_t *data, u16_t data_len,
 				      bool last_block, size_t total_size)
 {
+#if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
+	static int last_offset = FLASH_AREA_IMAGE_1_OFFSET;
+#endif
 	static u8_t percent_downloaded;
 	static u32_t bytes_downloaded;
 	u8_t downloaded;
@@ -270,12 +273,22 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 	/* Erase bank 1 before starting the write process */
 	if (bytes_downloaded == 0) {
 		flash_img_init(&dfu_ctx, flash_dev);
+#if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
+		LOG_INF("Download firmware started, erasing progressively.");
+		/* reset image data */
+		ret = boot_request_erase();
+		if (ret != 0) {
+			LOG_ERR("Failed to reset image data in bank 1");
+			goto cleanup;
+		}
+#else
 		LOG_INF("Download firmware started, erasing second bank");
 		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret != 0) {
 			LOG_ERR("Failed to erase flash bank 1");
 			goto cleanup;
 		}
+#endif
 	}
 
 	bytes_downloaded += data_len;
@@ -292,6 +305,24 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		percent_downloaded = downloaded;
 		LOG_INF("%d%%", percent_downloaded);
 	}
+
+#if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
+	/* Erase the sector that's going to be written to next */
+	while (last_offset <
+	       FLASH_AREA_IMAGE_1_OFFSET + dfu_ctx.bytes_written +
+	       FLASH_ERASE_BLOCK_SIZE) {
+		LOG_INF("Erasing sector at offset 0x%x", last_offset);
+		flash_write_protection_set(flash_dev, false);
+		ret = flash_erase(flash_dev, last_offset,
+				  FLASH_ERASE_BLOCK_SIZE);
+		flash_write_protection_set(flash_dev, true);
+		last_offset += FLASH_ERASE_BLOCK_SIZE;
+		if (ret) {
+			LOG_ERR("Error %d while erasing sector", ret);
+			goto cleanup;
+		}
+	}
+#endif
 
 	ret = flash_img_buffered_write(&dfu_ctx, data, data_len, last_block);
 	if (ret < 0) {
@@ -311,6 +342,9 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 	}
 
 cleanup:
+#if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
+	last_offset = FLASH_AREA_IMAGE_1_OFFSET;
+#endif
 	bytes_downloaded = 0;
 	percent_downloaded = 0;
 
@@ -572,14 +606,28 @@ static int lwm2m_image_init(void)
 			return ret;
 		}
 		LOG_INF("Marked image as OK");
+#if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
+		/* instead of erasing slot 1, reset image data */
+		ret = boot_request_erase();
+		if (ret) {
+			LOG_ERR("Flash image 1 reset: error %d", ret);
+			return ret;
+		}
+
+		LOG_DBG("Erased flash bank 1 at offset %x",
+			FLASH_AREA_IMAGE_1_OFFSET);
+#else
 		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
 		if (ret) {
 			LOG_ERR("Flash bank erase at offset %x: error %d",
 				FLASH_AREA_IMAGE_1_OFFSET, ret);
 			return ret;
 		}
+
 		LOG_DBG("Erased flash bank 1 at offset %x",
 			FLASH_AREA_IMAGE_1_OFFSET);
+#endif
+
 		if (counter.update != -1) {
 			ret = lwm2m_update_counter_update(COUNTER_CURRENT,
 						counter.update);
