@@ -408,7 +408,7 @@ static int lwm2m_setup(void)
 		if (mdm_ctx && mdm_ctx->data_imei) {
 			memset(ep_name, 0, sizeof(ep_name));
 			LOG_WRN("LWM2M Device ID not set, using IMEI");
-			snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:imei:%s",
+			snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "zmp:imei:%s",
 				 mdm_ctx->data_imei);
 			ret = 0;
 		}
@@ -417,7 +417,7 @@ static int lwm2m_setup(void)
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
 		LOG_WRN("LWM2M Device ID not set, using serial number");
-		snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "osf:sn:%s",
+		snprintk(ep_name, LWM2M_DEVICE_ID_SIZE, "zmp:sn:%s",
 			 device_serial_no);
 	}
 	LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
