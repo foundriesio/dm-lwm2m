@@ -126,11 +126,14 @@ endif # FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config NET_IF_UNICAST_IPV6_ADDR_COUNT
 	default 3 if BT
+	default 6 if NET_L2_OPENTHREAD
 
 config NET_IF_MCAST_IPV6_ADDR_COUNT
 	default 2 if BT
+	default 8 if NET_L2_OPENTHREAD
 
 config NET_RX_STACK_SIZE
+	default 5120 if NET_L2_OPENTHREAD
 	default 2048
 
 module = FOTA
