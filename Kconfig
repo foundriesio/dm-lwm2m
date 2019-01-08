@@ -43,7 +43,7 @@ config FOTA_DEVICE_SOC_SERIES_NRF52X
 
 config FOTA_LED_GPIO_INVERTED
 	bool "Set this if your hardware has an inverted LED GPIO"
-	default n
+	default y if SOC_NRF52840
 	help
 	  This setting is used to invert the GPIO pin settings when toggling
 	  the "Light Control" LED.
