@@ -16,6 +16,7 @@ config FOTA_DEVICE
 
 config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	bool "Kinetis K6x FOTA settings"
+	depends on !NET_L2_OPENTHREAD
 	select NET_SHELL
 	select NET_IPV4
 	select NET_UDP
