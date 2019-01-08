@@ -130,6 +130,9 @@ config NET_IF_UNICAST_IPV6_ADDR_COUNT
 config NET_IF_MCAST_IPV6_ADDR_COUNT
 	default 2 if BT
 
+config NET_RX_STACK_SIZE
+	default 2048
+
 module = FOTA
 module-dep = LOG
 module-str = Log level for FOTA application
