@@ -89,12 +89,6 @@ config NET_CONFIG_PEER_IPV6_ADDR
 config NET_L2_BT
 	default y
 
-config NET_IF_UNICAST_IPV6_ADDR_COUNT
-	default 3
-
-config NET_IF_MCAST_IPV6_ADDR_COUNT
-	default 2
-
 config NET_CONFIG_INIT_TIMEOUT
 	default 0
 
@@ -127,6 +121,14 @@ config BT_CTLR_ADV_EXT
 endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
+
+# General defaults
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3 if BT
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2 if BT
 
 module = FOTA
 module-dep = LOG
