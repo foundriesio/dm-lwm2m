@@ -77,6 +77,9 @@ config NET_CONFIG_BT_NODE
 config BT_DEVICE_NAME
 	default "ZMP IPSP node"
 
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
+	default y
+
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
 	default "coap://[fe80::d4e7:0:0:1]:5682"
 
