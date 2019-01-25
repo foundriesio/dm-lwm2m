@@ -48,21 +48,21 @@ def put(url, data):
         print(response)
         return False
 
-def count_targets(hostname, port):
+def count_targets(hostname):
     target_count = 0
-    client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
+    client_list_url = '%s/api/clients'  % (hostname)
     response = get(client_list_url)
     if response:
         for target in response:
             # perform get to make sure target is connected
-            endpoint_url = 'http://%s:%d/api/clients/%s/3/0/2' % (hostname, port, target['endpoint'])
+            endpoint_url = '%s/api/clients/%s/3/0/2' % (hostname, target['endpoint'])
             endpoint_serial = get(endpoint_url)
             if endpoint_serial is not None:
                 target_count += 1
 
     return target_count
 
-def run(targets, hostname, port, num_loops, loop_delay, max_waits):
+def run(targets, hostname, num_loops, loop_delay, max_waits):
     global aborted
     global test_fail
 
@@ -75,7 +75,7 @@ def run(targets, hostname, port, num_loops, loop_delay, max_waits):
         # wait for connections
         run = True
         while run == True and aborted == False:
-            target_count = count_targets(hostname, port)
+            target_count = count_targets(hostname)
             if target_count >= targets:
                 print("  Found %d targets prior to reset" % targets)
                 run = False
@@ -84,7 +84,7 @@ def run(targets, hostname, port, num_loops, loop_delay, max_waits):
                 time.sleep(5)
 
         if aborted == False:
-            client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
+            client_list_url = '%s/api/clients'  % (hostname)
             response = get(client_list_url)
 
         if aborted == False and response:
@@ -92,7 +92,7 @@ def run(targets, hostname, port, num_loops, loop_delay, max_waits):
             for target in response:
                 if 'endpoint' in target:
                     # send reset to targets
-                    endpoint_url = 'http://%s:%d/api/clients/%s/3/0/4' % (hostname, port, target['endpoint'])
+                    endpoint_url = '%s/api/clients/%s/3/0/4' % (hostname, target['endpoint'])
                     post(endpoint_url)
 
             if aborted == False:
@@ -104,7 +104,7 @@ def run(targets, hostname, port, num_loops, loop_delay, max_waits):
                 run = True
                 wait_count = 0
                 while run == True and aborted == False:
-                    target_count = count_targets(hostname, port)
+                    target_count = count_targets(hostname)
                     if target_count >= targets:
                         print("  Found %d targets after reset" % targets)
                         run = False
@@ -136,13 +136,12 @@ def main():
     description = 'Simple Leshan API Wrapper to wait for targets to connect and then reset them'
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-t', '--targets', help='Number of Leshan Targets to wait for', type=int, required=True)
-    parser.add_argument('-host', '--hostname', help='Leshan Server Hostname or IP', default='mgmt.foundries.io')
-    parser.add_argument('-port', '--port', help='Leshan Server Port', type=int, default='8080')
+    parser.add_argument('-host', '--hostname', help='Leshan Server URL', default='https://mgmt.foundries.io/leshan')
     parser.add_argument('-l', '--loops', help='Number of loop executions', type=int, default=0)
     parser.add_argument('-d', '--delay', help='Wait delay between loops (in seconds)', type=int, default=45)
     parser.add_argument('-w', '--wait', help='Max waits for fail', type=int, default=6)
     args = parser.parse_args()
-    loop_counter = run(args.targets, args.hostname, args.port, args.loops, args.delay, args.wait)
+    loop_counter = run(args.targets, args.hostname, args.loops, args.delay, args.wait)
     print("---------------------")
     if test_fail:
         print("Failed during loop %d." % loop_counter)

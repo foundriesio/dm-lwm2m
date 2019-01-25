@@ -35,10 +35,10 @@ def put(url, data):
         print response
         return False
 
-def run(targets, hostname, port):
+def run(targets, hostname):
     run = True
     while run:
-        client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
+        client_list_url = '%s/api/clients'  % (hostname)
         response = get(client_list_url)
         if response:
             if len(response) >= targets:
@@ -52,10 +52,9 @@ def main():
     description = 'Simple Leshan API Wrapper for waiting for targets to connect'
     parser = argparse.ArgumentParser(version=__version__, description=description)
     parser.add_argument('-t', '--targets', help='Number of Leshan Targets to wait for', type=int, required=True)
-    parser.add_argument('-host', '--hostname', help='Leshan Server Hostname or IP', default='leshan')
-    parser.add_argument('-port', '--port', help='Leshan Server Port', default='8080')
+    parser.add_argument('-host', '--hostname', help='Leshan Server URL', default='https://mgmt.foundries.io/leshan')
     args = parser.parse_args()
-    run(args.targets, args.hostname, args.port)
+    run(args.targets, args.hostname)
 
 if __name__ == '__main__':
     main()

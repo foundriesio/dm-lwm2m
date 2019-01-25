@@ -24,11 +24,10 @@ logging.basicConfig(level=logging.INFO,
 class UpdateAction:
     # url must always be set by caller
     def __init__(self, client=None, url='url',
-                 hostname='mgmt.foundries.io', port=8080, monitor=False):
+                 hostname='http://mgmt.foundries.io/leshan', monitor=False):
         self.client = client;
         self.url = url;
         self.hostname = hostname;
-        self.port = port;
         self.monitor = monitor;
         self.download_status = 0;
         self.update_result = 0;
@@ -99,15 +98,15 @@ def put(url, data):
 
 def update(ua, thread_count):
     ua.time_start = datetime.datetime.now()
-    download_status_url = 'http://%s:%s/api/clients/%s/5/0/3' % (ua.hostname, ua.port, ua.client)
-    update_result_url = 'http://%s:%s/api/clients/%s/5/0/5' % (ua.hostname, ua.port, ua.client)
+    download_status_url = '%s/api/clients/%s/5/0/3' % (ua.hostname, ua.client)
+    update_result_url = '%s/api/clients/%s/5/0/5' % (ua.hostname, ua.client)
     while ua.abort_thread == False:
         ua.download_status = get(download_status_url)
         if ua.download_status == 0:
             if ua.requested == False:
                 logging.info('ready for firmware update')
                 firmware = {'id': 1, 'value': ua.url}
-                firmware_url = 'http://%s:%s/api/clients/%s/5/0/1' % (ua.hostname, ua.port, ua.client)
+                firmware_url = '%s/api/clients/%s/5/0/1' % (ua.hostname, ua.client)
                 if (put(firmware_url, firmware)):
                     logging.info('requested firmware download from %s', ua.url)
                 else:
@@ -128,7 +127,7 @@ def update(ua, thread_count):
             logging.info('downloading firmware')
         if ua.download_status == 2:
             logging.info('ready to apply update')
-            exec_update_url = 'http://%s:%s/api/clients/%s/5/0/2' % (ua.hostname, ua.port, ua.client)
+            exec_update_url = '%s/api/clients/%s/5/0/2' % (ua.hostname, ua.client)
             if (post(exec_update_url)):
                 logging.info('requested firmware update execution')
                 check = True
@@ -161,7 +160,7 @@ def update(ua, thread_count):
     ua.time_end = datetime.datetime.now()
     thread_count.dec()
 
-def run(client, url, hostname, port, monitor, device, max_threads):
+def run(client, url, hostname, monitor, device, max_threads):
     global aborted
 
     start_time = datetime.datetime.now()
@@ -170,7 +169,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
         # bump thread count
         thread_count.inc()
         # append a new update action
-        ua = UpdateAction(client, url, hostname, port, monitor)
+        ua = UpdateAction(client, url, hostname, monitor)
         update(ua, thread_count)
         if ua.result:
             logging.info('%s update completed', client)
@@ -179,14 +178,14 @@ def run(client, url, hostname, port, monitor, device, max_threads):
             logging.error('%s failed to udpate, aborting...', client)
             sys.exit(1)
     else:
-        client_list_url = 'http://%s:%s/api/clients'  % (hostname, port)
+        client_list_url = '%s/api/clients'  % (hostname)
         response = get(client_list_url, raw=True)
         if response:
             for target in response:
                 perform_update = True
                 if 'endpoint' in target:
                     if device:
-                        endpoint_url = 'http://%s:%s/api/clients/%s/3/0/1'  % (hostname, port, target['endpoint'])
+                        endpoint_url = '%s/api/clients/%s/3/0/1'  % (hostname, target['endpoint'])
                         endpoint_device = get(endpoint_url)
                         if (endpoint_device != device):
                             perform_update = False
@@ -198,7 +197,7 @@ def run(client, url, hostname, port, monitor, device, max_threads):
                             # bump thread count
                             thread_count.inc()
                             # append a new update action
-                            ua = UpdateAction(target['endpoint'], url, hostname, port, monitor)
+                            ua = UpdateAction(target['endpoint'], url, hostname, monitor)
                             update_list.append(ua)
 			    # create a new thread
                             t = threading.Thread(name=target['endpoint'], target=update,
@@ -233,13 +232,12 @@ def main():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
     parser.add_argument('-u', '--url', help='URL for client firmware (http:// or coap://)', required=True)
-    parser.add_argument('-host', '--hostname', help='Leshan server hostname or ip', default='mgmt.foundries.io')
-    parser.add_argument('-port', '--port', help='Leshan server port', default='8080')
+    parser.add_argument('-host', '--hostname', help='Leshan server URL', default='https://mgmt.foundries.io/leshan')
     parser.add_argument('-m', '--monitor', help='Monitor the update', action='store_true', default=False)
     parser.add_argument('-d', '--device', help='Device type filter', default=None)
     parser.add_argument('-t', '--threads', help='Maximum threads', default=1)
     args = parser.parse_args()
-    run(args.client, args.url, args.hostname, args.port, args.monitor, args.device, int(args.threads))
+    run(args.client, args.url, args.hostname, args.monitor, args.device, int(args.threads))
 
 if __name__ == '__main__':
     main()
