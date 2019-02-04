@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2017 Linaro Limited
- * Copyright (c) 2018 Foundries.io
+ * Copyright (c) 2018-2019 Foundries.io
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -35,9 +35,6 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "bluetooth.h"
 #endif
 
-#define WAIT_TIME	K_SECONDS(10)
-#define CONNECT_TIME	K_SECONDS(10)
-
 /* Network configuration checks */
 #if defined(CONFIG_NET_IPV6)
 BUILD_ASSERT_MSG(sizeof(CONFIG_NET_CONFIG_PEER_IPV6_ADDR) > 1,
@@ -56,38 +53,29 @@ BUILD_ASSERT_MSG(sizeof(CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR) > 1,
 		"CONFIG_LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR must be defined in boards/$(BOARD)-local.conf");
 #endif
 
+#if defined(CONFIG_NET_IPV6)
+#define SERVER_ADDR	CONFIG_NET_CONFIG_PEER_IPV6_ADDR
+#elif defined(CONFIG_NET_IPV4)
+#define SERVER_ADDR	CONFIG_NET_CONFIG_PEER_IPV4_ADDR
+#else
+#error "Please enable IPv6 or IPv4"
+#endif
+
 #define CLIENT_MANUFACTURER	"Zephyr"
 #define CLIENT_DEVICE_TYPE	"Zephyr OMA-LWM2M Client"
 #define CLIENT_HW_VER		CONFIG_SOC
 
 #define NUM_TEST_RESULTS	5
 
-#if defined(CONFIG_NET_APP_DTLS)
-#if !defined(CONFIG_NET_APP_TLS_STACK_SIZE)
-#define CONFIG_NET_APP_TLS_STACK_SIZE          8192
-#endif /* CONFIG_NET_APP_TLS_STACK_SIZE */
-
-#define HOSTNAME "localhost"   /* for cert verification if that is enabled */
-
-/* The result buf size is set to large enough so that we can receive max size
- * buf back. Note that mbedtls needs also be configured to have equal size
- * value for its buffer size. See MBEDTLS_SSL_MAX_CONTENT_LEN option in DTLS
- * config file.
- */
-#define RESULT_BUF_SIZE 1500
-
-NET_APP_TLS_POOL_DEFINE(dtls_pool, 10);
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+#define TLS_TAG			1
 
 #define DEFAULT_CLIENT_PSK	"000102030405060708090a0b0c0d0e0f"
 
 /* DTLS information read from credential partition */
 static char client_psk[LWM2M_DEVICE_TOKEN_SIZE];
 static u8_t client_psk_bin[LWM2M_DEVICE_TOKEN_HEX_SIZE];
-
-static u8_t dtls_result[RESULT_BUF_SIZE];
-NET_STACK_DEFINE(NET_APP_DTLS, net_app_dtls_stack,
-		 CONFIG_NET_APP_TLS_STACK_SIZE, CONFIG_NET_APP_TLS_STACK_SIZE);
-#endif /* CONFIG_NET_APP_DTLS */
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
 #define FLASH_BANK_SIZE FLASH_AREA_IMAGE_1_SIZE
 
@@ -107,7 +95,7 @@ static char ep_name[LWM2M_DEVICE_ID_SIZE];
 
 static struct device *flash_dev;
 static struct flash_img_context dfu_ctx;
-static struct lwm2m_ctx app_ctx;
+static struct lwm2m_ctx client;
 
 /* storage location for firmware package */
 static u8_t firmware_buf[CONFIG_LWM2M_COAP_BLOCK_SIZE];
@@ -133,21 +121,6 @@ static struct k_delayed_work reboot_work;
 static struct net_mgmt_event_callback cb;
 static struct k_work net_event_work;
 static struct k_work_q *net_event_work_q;
-
-#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
-NET_PKT_TX_SLAB_DEFINE(lwm2m_tx_udp, 5);
-NET_PKT_DATA_POOL_DEFINE(lwm2m_data_udp, 20);
-
-static struct k_mem_slab *tx_udp_slab(void)
-{
-	return &lwm2m_tx_udp;
-}
-
-static struct net_buf_pool *data_udp_pool(void)
-{
-	return &lwm2m_data_udp;
-}
-#endif
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
 {
@@ -352,7 +325,7 @@ cleanup:
 }
 #endif
 
-#if defined(CONFIG_NET_APP_DTLS)
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
 static int generate_hex(char *src, u8_t *dst, size_t dst_len)
 {
 	int src_len, i, j = 0;
@@ -384,12 +357,15 @@ static int generate_hex(char *src, u8_t *dst, size_t dst_len)
 
 	return 0;
 }
-#endif
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
 static int lwm2m_setup(void)
 {
 	const struct product_id_t *product_id = product_id_get();
 	static char device_serial_no[10];
+	char *server_url;
+	u16_t server_url_len;
+	u8_t server_url_flags;
 	int ret;
 
 	snprintk(device_serial_no, sizeof(device_serial_no), "%08x",
@@ -413,7 +389,7 @@ static int lwm2m_setup(void)
 			ret = 0;
 		}
 	}
-#endif
+#endif /* CONFIG_MODEM_RECEIVER */
 	if (ret || ep_name[LWM2M_DEVICE_ID_SIZE - 1] != '\0') {
 		/* No UUID, use the serial number instead */
 		LOG_WRN("LWM2M Device ID not set, using serial number");
@@ -422,7 +398,7 @@ static int lwm2m_setup(void)
 	}
 	LOG_INF("LWM2M Endpoint Client Name: %s", ep_name);
 
-#if defined(CONFIG_NET_APP_DTLS)
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
 	/* Check if there is a valid device token stored in the device */
 	ret = lwm2m_get_device_token(flash_dev, client_psk);
 	if (ret || client_psk[LWM2M_DEVICE_TOKEN_SIZE - 1] != '\0') {
@@ -439,7 +415,29 @@ static int lwm2m_setup(void)
 		LOG_ERR("Failed to generate psk hex: %d", ret);
 		return ret;
 	}
-#endif
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
+
+	/* Server URL */
+	ret = lwm2m_engine_get_res_data("0/0/0",
+					(void **)&server_url, &server_url_len,
+					&server_url_flags);
+	if (ret < 0) {
+		return ret;
+	}
+
+	snprintk(server_url, server_url_len, "coap%s//%s%s%s",
+		 IS_ENABLED(CONFIG_LWM2M_DTLS_SUPPORT) ? "s:" : ":",
+		 strchr(SERVER_ADDR, ':') ? "[" : "", SERVER_ADDR,
+		 strchr(SERVER_ADDR, ':') ? "]" : "");
+
+	/* Security Mode */
+	lwm2m_engine_set_u8("0/0/2",
+			    IS_ENABLED(CONFIG_LWM2M_DTLS_SUPPORT) ? 0 : 3);
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+	lwm2m_engine_set_string("0/0/3", (char *)ep_name);
+	lwm2m_engine_set_opaque("0/0/5",
+				(void *)client_psk_bin, sizeof(client_psk_bin));
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
 	/* Device Object values and callbacks */
 	lwm2m_engine_set_res_data("3/0/0", CLIENT_MANUFACTURER,
@@ -500,7 +498,7 @@ static void rd_client_event(struct lwm2m_ctx *client,
 		/* do nothing */
 		break;
 
-	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_FAILURE:
+	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_REG_FAILURE:
 		if (tc_logging) {
 			_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
 			TC_END_REPORT(TC_FAIL);
@@ -508,7 +506,11 @@ static void rd_client_event(struct lwm2m_ctx *client,
 		}
 		break;
 
-	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_COMPLETE:
+	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_REG_COMPLETE:
+		/* do nothing here and continue to registration */
+		break;
+
+	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_TRANSFER_COMPLETE:
 		/* do nothing here and continue to registration */
 		break;
 
@@ -728,48 +730,18 @@ static void lwm2m_start(struct k_work *work)
 	update_data.tc_count = 0;
 	tc_logging = true;
 
-	memset(&app_ctx, 0x0, sizeof(app_ctx));
-	app_ctx.net_init_timeout = WAIT_TIME;
-	app_ctx.net_timeout = CONNECT_TIME;
-#if defined(CONFIG_NET_CONTEXT_NET_PKT_POOL)
-	app_ctx.tx_slab = tx_udp_slab;
-	app_ctx.data_pool = data_udp_pool;
-#endif
+	memset(&client, 0x0, sizeof(client));
+
+#if defined(CONFIG_LWM2M_DTLS_SUPPORT)
+	client.tls_tag = TLS_TAG;
+#endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
 	/* small delay to finalize networking */
 	k_sleep(K_SECONDS(2));
 	TC_PRINT("LwM2M registration\n");
 
-#if defined(CONFIG_NET_APP_DTLS)
-	app_ctx.client_psk = client_psk_bin;
-	app_ctx.client_psk_len = LWM2M_DEVICE_TOKEN_HEX_SIZE;
-	app_ctx.client_psk_id = ep_name;
-	app_ctx.client_psk_id_len = strlen(ep_name);
-	app_ctx.cert_host = HOSTNAME;
-	app_ctx.dtls_pool = &dtls_pool;
-	app_ctx.dtls_result_buf = dtls_result;
-	app_ctx.dtls_result_buf_len = RESULT_BUF_SIZE;
-	app_ctx.dtls_stack = net_app_dtls_stack;
-	app_ctx.dtls_stack_len = K_THREAD_STACK_SIZEOF(net_app_dtls_stack);
-#endif /* CONFIG_NET_APP_DTLS */
-
-#if defined(CONFIG_NET_IPV6)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_CONFIG_PEER_IPV6_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name,
-				    rd_client_event);
-#elif defined(CONFIG_NET_IPV4)
-	ret = lwm2m_rd_client_start(&app_ctx, CONFIG_NET_CONFIG_PEER_IPV4_ADDR,
-				    CONFIG_LWM2M_PEER_PORT, ep_name,
-				    rd_client_event);
-#else
-	LOG_ERR("LwM2M client requires IPv4 or IPv6.");
-	return;
-#endif
-	if (ret < 0) {
-		LOG_ERR("LWM2M RD client error (%d)", ret);
-		return;
-	}
-
+	/* client.sec_obj_inst is 0 as a starting point */
+	lwm2m_rd_client_start(&client, ep_name, rd_client_event);
 	LOG_INF("setup complete.");
 }
 
