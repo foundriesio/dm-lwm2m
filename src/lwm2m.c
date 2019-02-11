@@ -249,7 +249,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
 		LOG_INF("Download firmware started, erasing progressively.");
 		/* reset image data */
-		ret = boot_request_erase();
+		ret = boot_invalidate_slot1();
 		if (ret != 0) {
 			LOG_ERR("Failed to reset image data in bank 1");
 			goto cleanup;
@@ -610,7 +610,7 @@ static int lwm2m_image_init(void)
 		LOG_INF("Marked image as OK");
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
 		/* instead of erasing slot 1, reset image data */
-		ret = boot_request_erase();
+		ret = boot_invalidate_slot1();
 		if (ret) {
 			LOG_ERR("Flash image 1 reset: error %d", ret);
 			return ret;
