@@ -22,11 +22,9 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}-local.conf)
   set(CONF_FILE ${CONF_FILE} " boards/${BOARD}-local.conf")
 endif()
 
-# DTC overlays are split into a part that is specific to the
-# application image (common.overlay) and a part that is shared by both
-# the application and MCUboot builds (mcuboot.overlay).
-set(DTC_OVERLAY_FILE
-  "${CMAKE_CURRENT_SOURCE_DIR}/common.overlay ${CMAKE_CURRENT_SOURCE_DIR}/mcuboot.overlay")
+# DTC overlays has a part that is specific to the application image
+# (common.overlay).
+set(DTC_OVERLAY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/common.overlay")
 # Individual boards may also define DTS overlays.
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay)
   set(DTC_OVERLAY_FILE
