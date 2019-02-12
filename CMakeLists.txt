@@ -22,13 +22,20 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}-local.conf)
   set(CONF_FILE ${CONF_FILE} " boards/${BOARD}-local.conf")
 endif()
 
-# DTC overlays has a part that is specific to the application image
-# (common.overlay).
-set(DTC_OVERLAY_FILE "${CMAKE_CURRENT_SOURCE_DIR}/common.overlay")
-# Individual boards may also define DTS overlays.
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay)
-  set(DTC_OVERLAY_FILE
-    ${DTC_OVERLAY_FILE} " ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay")
+  # Individual boards must provide DTS overlays which declare the
+  # application state partition, and, as appropriate, the DTLS
+  # partition.
+  set(DTC_OVERLAY_FILE ${DTC_OVERLAY_FILE} " ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay")
+else()
+  # We used to be able to try to go on based on SoC-level defaults,
+  # but now that DTS runs before Kconfig, we can't ifdef on the SoC in
+  # a DTS overlay anymore. Absent a better solution, fail.
+  message(FATAL_ERROR
+    "Missing board support for this application; please write
+    ${CMAKE_CURRENT_SOURCE_DIR}/boards/${BOARD}.overlay. (This is
+    needed for now because DTS now runs before KConfig, so SoC-level
+    defaults cannot be applied.)")
 endif()
 
 # Mandatory Zephyr boilerplate.
