@@ -77,7 +77,9 @@ static char client_psk[LWM2M_DEVICE_TOKEN_SIZE];
 static u8_t client_psk_bin[LWM2M_DEVICE_TOKEN_HEX_SIZE];
 #endif /* CONFIG_LWM2M_DTLS_SUPPORT */
 
-#define FLASH_BANK_SIZE FLASH_AREA_IMAGE_1_SIZE
+#define FLASH_BANK0_ID DT_FLASH_AREA_IMAGE_0_ID
+#define FLASH_BANK1_ID DT_FLASH_AREA_IMAGE_1_ID
+#define FLASH_BANK_SIZE DT_FLASH_AREA_IMAGE_1_SIZE
 
 struct update_lwm2m_data {
 	int failures;
@@ -124,7 +126,7 @@ static struct k_work_q *net_event_work_q;
 
 static int lwm2m_update_counter_read(struct update_counter *update_counter)
 {
-	return flash_read(flash_dev, FLASH_AREA_APPLICATION_STATE_OFFSET,
+	return flash_read(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
 			update_counter, sizeof(*update_counter));
 }
 
@@ -133,7 +135,7 @@ static int lwm2m_update_counter_update(update_counter_t type, u32_t new_value)
 	struct update_counter update_counter;
 	int ret;
 
-	flash_read(flash_dev, FLASH_AREA_APPLICATION_STATE_OFFSET,
+	flash_read(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
 			&update_counter, sizeof(update_counter));
 	if (type == COUNTER_UPDATE) {
 		update_counter.update = new_value;
@@ -142,15 +144,15 @@ static int lwm2m_update_counter_update(update_counter_t type, u32_t new_value)
 	}
 
 	flash_write_protection_set(flash_dev, false);
-	ret = flash_erase(flash_dev, FLASH_AREA_APPLICATION_STATE_OFFSET,
-			  FLASH_AREA_APPLICATION_STATE_SIZE);
+	ret = flash_erase(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
+			  DT_FLASH_AREA_APPLICATION_STATE_SIZE);
 	flash_write_protection_set(flash_dev, true);
 	if (ret) {
 		return ret;
 	}
 
 	flash_write_protection_set(flash_dev, false);
-	ret = flash_write(flash_dev, FLASH_AREA_APPLICATION_STATE_OFFSET,
+	ret = flash_write(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
 			  &update_counter, sizeof(update_counter));
 	flash_write_protection_set(flash_dev, true);
 
@@ -226,7 +228,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 				      bool last_block, size_t total_size)
 {
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
-	static int last_offset = FLASH_AREA_IMAGE_1_OFFSET;
+	static int last_offset = DT_FLASH_AREA_IMAGE_1_OFFSET;
 #endif
 	static u8_t percent_downloaded;
 	static u32_t bytes_downloaded;
@@ -245,7 +247,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 
 	/* Erase bank 1 before starting the write process */
 	if (bytes_downloaded == 0) {
-		flash_img_init(&dfu_ctx, flash_dev);
+		flash_img_init(&dfu_ctx);
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
 		LOG_INF("Download firmware started, erasing progressively.");
 		/* reset image data */
@@ -256,7 +258,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 		}
 #else
 		LOG_INF("Download firmware started, erasing second bank");
-		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
+		ret = boot_erase_img_bank(FLASH_BANK1_ID);
 		if (ret != 0) {
 			LOG_ERR("Failed to erase flash bank 1");
 			goto cleanup;
@@ -282,14 +284,14 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
 	/* Erase the sector that's going to be written to next */
 	while (last_offset <
-	       FLASH_AREA_IMAGE_1_OFFSET + dfu_ctx.bytes_written +
-	       FLASH_ERASE_BLOCK_SIZE) {
+	       DT_FLASH_AREA_IMAGE_1_OFFSET + dfu_ctx.bytes_written +
+	       DT_FLASH_ERASE_BLOCK_SIZE) {
 		LOG_INF("Erasing sector at offset 0x%x", last_offset);
 		flash_write_protection_set(flash_dev, false);
 		ret = flash_erase(flash_dev, last_offset,
-				  FLASH_ERASE_BLOCK_SIZE);
+				  DT_FLASH_ERASE_BLOCK_SIZE);
 		flash_write_protection_set(flash_dev, true);
-		last_offset += FLASH_ERASE_BLOCK_SIZE;
+		last_offset += DT_FLASH_ERASE_BLOCK_SIZE;
 		if (ret) {
 			LOG_ERR("Error %d while erasing sector", ret);
 			goto cleanup;
@@ -316,7 +318,7 @@ static int firmware_block_received_cb(u16_t obj_inst_id,
 
 cleanup:
 #if defined(CONFIG_FOTA_ERASE_PROGRESSIVELY)
-	last_offset = FLASH_AREA_IMAGE_1_OFFSET;
+	last_offset = DT_FLASH_AREA_IMAGE_1_OFFSET;
 #endif
 	bytes_downloaded = 0;
 	percent_downloaded = 0;
@@ -556,8 +558,7 @@ static void log_img_ver(void)
 	struct mcuboot_img_sem_ver *ver;
 	int ret;
 
-	ret = boot_read_bank_header(FLASH_AREA_IMAGE_0_OFFSET,
-				    &header, sizeof(header));
+	ret = boot_read_bank_header(FLASH_BANK0_ID, &header, sizeof(header));
 	if (ret) {
 		LOG_ERR("can't read header: %d", ret);
 		return;
@@ -617,17 +618,17 @@ static int lwm2m_image_init(void)
 		}
 
 		LOG_DBG("Erased flash bank 1 at offset %x",
-			FLASH_AREA_IMAGE_1_OFFSET);
+			DT_FLASH_AREA_IMAGE_1_OFFSET);
 #else
-		ret = boot_erase_img_bank(FLASH_AREA_IMAGE_1_OFFSET);
+		ret = boot_erase_img_bank(FLASH_BANK1_ID);
 		if (ret) {
 			LOG_ERR("Flash bank erase at offset %x: error %d",
-				FLASH_AREA_IMAGE_1_OFFSET, ret);
+				DT_FLASH_AREA_IMAGE_1_OFFSET, ret);
 			return ret;
 		}
 
 		LOG_DBG("Erased flash bank 1 at offset %x",
-			FLASH_AREA_IMAGE_1_OFFSET);
+			DT_FLASH_AREA_IMAGE_1_OFFSET);
 #endif
 
 		if (counter.update != -1) {

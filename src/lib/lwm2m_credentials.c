@@ -8,7 +8,7 @@
 
 #include <flash.h>
 
-#define LWM2M_CREDENTIALS_BASE FLASH_AREA_LWM2M_CREDENTIALS_OFFSET
+#define LWM2M_CREDENTIALS_BASE DT_FLASH_AREA_LWM2M_CREDENTIALS_OFFSET
 
 /**
  * @brief On-flash representation of lwm2m credentials data.
