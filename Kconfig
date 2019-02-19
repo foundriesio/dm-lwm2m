@@ -14,6 +14,13 @@ config FOTA_DEVICE
 	help
 	  Main config to enable device specific settings
 
+config FOTA_ENDPOINT_PREFIX
+	string "LwM2M endpoint will start with this string"
+	default "zmp"
+	help
+	  LwM2M endpoint names follow this format "<prefix>:sn:<serial #>".
+	  This setting allows you to set the "zmp" portion to a custom value.
+
 config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	bool "Kinetis K6x FOTA settings"
 	depends on !NET_L2_OPENTHREAD
