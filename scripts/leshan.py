@@ -165,47 +165,38 @@ def run(client, url, hostname, monitor, device, max_threads):
 
     start_time = datetime.datetime.now()
     thread_count = AtomicCounter()
-    if client:
-        # bump thread count
-        thread_count.inc()
-        # append a new update action
-        ua = UpdateAction(client, url, hostname, monitor)
-        update(ua, thread_count)
-        if ua.result:
-            logging.info('%s update completed', client)
-            sys.exit(0)
-        else:
-            logging.error('%s failed to udpate, aborting...', client)
-            sys.exit(1)
-    else:
-        client_list_url = '%s/api/clients'  % (hostname)
-        response = get(client_list_url, raw=True)
-        if response:
-            for target in response:
-                perform_update = True
-                if 'endpoint' in target:
-                    if device:
-                        endpoint_url = '%s/api/clients/%s/3/0/1'  % (hostname, target['endpoint'])
-                        endpoint_device = get(endpoint_url)
-                        if (endpoint_device != device):
-                            perform_update = False
-                    if perform_update:
-                        # check for max threads and wait if needed
-                        while (not aborted and thread_count.value >= max_threads):
-                            time.sleep(thread_wait)
-                        if (not aborted):
-                            # bump thread count
-                            thread_count.inc()
-                            # append a new update action
-                            ua = UpdateAction(target['endpoint'], url, hostname, monitor)
-                            update_list.append(ua)
-			    # create a new thread
-                            t = threading.Thread(name=target['endpoint'], target=update,
-                                                 args=(ua, thread_count,))
-                            t.start()
-            while (thread_count.value > 0):
-                # TODO check timeout?
-                time.sleep(thread_wait)
+    client_list_url = '%s/api/clients'  % (hostname)
+    response = get(client_list_url, raw=True)
+    if response:
+        for target in response:
+            perform_update = True
+            if 'endpoint' in target:
+                if client:
+                    # check for a partial match of the endpoint
+                    if not client in target['endpoint']:
+                        perform_update = False
+                if perform_update and device:
+                    endpoint_url = '%s/api/clients/%s/3/0/1'  % (hostname, target['endpoint'])
+                    endpoint_device = get(endpoint_url)
+                    if (endpoint_device != device):
+                        perform_update = False
+                if perform_update:
+                    # check for max threads and wait if needed
+                    while (not aborted and thread_count.value >= max_threads):
+                        time.sleep(thread_wait)
+                    if (not aborted):
+                        # bump thread count
+                        thread_count.inc()
+                        # append a new update action
+                        ua = UpdateAction(target['endpoint'], url, hostname, monitor)
+                        update_list.append(ua)
+                        # create a new thread
+                        t = threading.Thread(name=target['endpoint'], target=update,
+                                             args=(ua, thread_count,))
+                        t.start()
+        while (thread_count.value > 0):
+            # TODO check timeout?
+            time.sleep(thread_wait)
     # dump update info
     logging.info('UPDATE SUMMARY:')
     result = 0
