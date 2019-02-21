@@ -34,6 +34,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #ifdef CONFIG_NET_L2_BT
 #include "bluetooth.h"
 #endif
+#include "settings.h"
 
 /* Network configuration checks */
 #if defined(CONFIG_NET_IPV6)
@@ -104,60 +105,10 @@ static u8_t firmware_buf[CONFIG_LWM2M_COAP_BLOCK_SIZE];
 /* storage location for firmware version */
 static char firmware_version[32];
 
-/*
- * TODO: Find a better way to handle update markers, and if possible
- * identify a common solution that could also be shared with hawkbit
- * or other fota-implementations (e.g. common file-system structure).
- */
-struct update_counter {
-	int current;
-	int update;
-};
-
-typedef enum {
-	COUNTER_CURRENT = 0,
-	COUNTER_UPDATE,
-} update_counter_t;
-
 static struct k_delayed_work reboot_work;
 static struct net_mgmt_event_callback cb;
 static struct k_work net_event_work;
 static struct k_work_q *net_event_work_q;
-
-static int lwm2m_update_counter_read(struct update_counter *update_counter)
-{
-	return flash_read(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
-			update_counter, sizeof(*update_counter));
-}
-
-static int lwm2m_update_counter_update(update_counter_t type, u32_t new_value)
-{
-	struct update_counter update_counter;
-	int ret;
-
-	flash_read(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
-			&update_counter, sizeof(update_counter));
-	if (type == COUNTER_UPDATE) {
-		update_counter.update = new_value;
-	} else {
-		update_counter.current = new_value;
-	}
-
-	flash_write_protection_set(flash_dev, false);
-	ret = flash_erase(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
-			  DT_FLASH_AREA_APPLICATION_STATE_SIZE);
-	flash_write_protection_set(flash_dev, true);
-	if (ret) {
-		return ret;
-	}
-
-	flash_write_protection_set(flash_dev, false);
-	ret = flash_write(flash_dev, DT_FLASH_AREA_APPLICATION_STATE_OFFSET,
-			  &update_counter, sizeof(update_counter));
-	flash_write_protection_set(flash_dev, true);
-
-	return ret;
-}
 
 static void *firmware_read_cb(u16_t obj_inst_id, size_t *data_len)
 {
@@ -193,14 +144,14 @@ static int firmware_update_cb(u16_t obj_inst_id)
 	LOG_DBG("Executing firmware update");
 
 	/* Bump update counter so it can be verified on the next reboot */
-	ret = lwm2m_update_counter_read(&update_counter);
+	ret = fota_update_counter_read(&update_counter);
 	if (ret) {
 		LOG_ERR("Failed read update counter");
 		goto cleanup;
 	}
 	LOG_INF("Update Counter: current %d, update %d",
 		update_counter.current, update_counter.update);
-	ret = lwm2m_update_counter_update(COUNTER_UPDATE,
+	ret = fota_update_counter_update(COUNTER_UPDATE,
 					  update_counter.current + 1);
 	if (ret) {
 		LOG_ERR("Failed to update the update counter: %d", ret);
@@ -594,7 +545,7 @@ static int lwm2m_image_init(void)
 	log_img_ver();
 
 	/* Update boot status and update counter */
-	ret = lwm2m_update_counter_read(&counter);
+	ret = fota_update_counter_read(&counter);
 	if (ret) {
 		LOG_ERR("Failed read update counter");
 		return ret;
@@ -633,14 +584,14 @@ static int lwm2m_image_init(void)
 #endif
 
 		if (counter.update != -1) {
-			ret = lwm2m_update_counter_update(COUNTER_CURRENT,
+			ret = fota_update_counter_update(COUNTER_CURRENT,
 						counter.update);
 			if (ret) {
 				LOG_ERR("Failed to update the update "
 					"counter: %d", ret);
 				return ret;
 			}
-			ret = lwm2m_update_counter_read(&counter);
+			ret = fota_update_counter_read(&counter);
 			if (ret) {
 				LOG_ERR("Failed to read update counter: %d",
 					ret);

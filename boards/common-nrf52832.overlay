@@ -1,9 +1,14 @@
 &flash0 {
 	partitions {
-		/* Persistent state the application modifies. */
-		app_state_partition: partition@7d000 {
-			label = "application-state";
-			reg = <0x0007d000 0x2000>;
+		/*
+		 * For most devices we have a storage partition defined,
+		 * and here we are shrinking it slightly to make room for
+		 * 1 additional partition.  In the case of Nitrogen there
+		 * is no storage partition defined.
+		 */
+		storage_partition: partition@7a000 {
+			label = "storage";
+			reg = <0x0007a000 0x00005000>;
 		};
 
 		/* DTLS credentials etc. */

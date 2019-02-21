@@ -16,12 +16,14 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include <gpio.h>
 #include <net/lwm2m.h>
 #include <tc_util.h>
+#include <settings/settings.h>
 
 /* Local helpers and functions */
 #include "app_work_queue.h"
 #include "product_id.h"
 #include "lwm2m.h"
 #include "light_control.h"
+#include "settings.h"
 
 /* Defines and configs for the IPSO elements */
 #define TEMP_DEV		"fota-temp"
@@ -119,6 +121,17 @@ void main(void)
 		return;
 	}
 	_TC_END_RESULT(TC_PASS, "init_light_control");
+
+	TC_PRINT("Initializing FOTA settings\n");
+	if (fota_settings_init()) {
+		_TC_END_RESULT(TC_FAIL, "fota_settings_init");
+		TC_END_REPORT(TC_FAIL);
+	}
+	_TC_END_RESULT(TC_PASS, "fota_settings_init");
+
+	/* Load *all* persistent settings */
+	settings_load();
+
 	TC_END_REPORT(TC_PASS);
 
 	if (lwm2m_init(app_work_q)) {
