@@ -47,7 +47,7 @@ target_sources(app PRIVATE src/lib/product_id.c)
 target_sources(app PRIVATE src/lib/lwm2m_credentials.c)
 
 # Application build configuration.
-target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/tests/include)
+target_include_directories(app PRIVATE $ENV{ZEPHYR_BASE}/subsys/testsuite/include/)
 target_include_directories(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/lib)
 
 target_sources(app PRIVATE src/main.c)
