@@ -88,16 +88,16 @@ config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
 	default y
 
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
-	default "coap://[fe80::d4e7:0:0:1]:5682"
+	default "coap://[fd11:11::1]:5682"
 
 config NET_CONFIG_PEER_IPV6_ADDR
-	default "fe80::d4e7:0:0:1"
+	default "64:ff9b::c6c7:6c9f"
 
 config NET_L2_BT
 	default y
 
 config NET_CONFIG_INIT_TIMEOUT
-	default 0
+	default 30
 
 config BT_RX_BUF_COUNT
 	default 10
