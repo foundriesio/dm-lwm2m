@@ -117,6 +117,18 @@ config BT_RX_STACK_SIZE
 config BT_L2CAP_TX_BUF_COUNT
 	default 6
 
+config BT_SMP
+	default y
+
+config BT_PERIPHERAL
+	default y
+
+config BT_CENTRAL
+	default y
+
+config BT_L2CAP_DYNAMIC_CHANNEL
+	default y
+
 # The following BT configs are not needed in peripheral mode.
 
 config BT_CTLR_CONN_PARAM_REQ
