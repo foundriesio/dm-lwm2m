@@ -1,9 +1,19 @@
 &flash0 {
 	partitions {
-		/* Add a credential partition */
-		credentials_partition: partition@f4000 {
-			label = "lwm2m-credentials";
-			reg = <0x000f4000 0x1000>;
+		storage_partition: partition@f8000 {
+			/* Shrink storage to 0x3000 */
+			reg = <0xf8000 0x3000>;
 		};
+
+		/* Add a credential partition */
+		credentials_partition: partition@fb000 {
+			label = "lwm2m-credentials";
+			reg = <0xfb000 0x1000>;
+		};
+
+		/*
+		 * Leave room for OpenThread settings
+		 * (last 4 pages of flash: 0xfc000 - 0xfffff)
+		 */
 	};
 };
