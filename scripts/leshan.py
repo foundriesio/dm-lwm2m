@@ -15,7 +15,9 @@ import sys
 # Script Version 1.1
 
 headers = { 'Content-Type': 'application/json'}
-thread_wait = 5
+loop_thread_wait     = 1
+download_thread_wait = 5
+update_thread_wait   = 10
 
 logging.basicConfig(level=logging.INFO,
                     format='[%(levelname)s] (%(threadName)-10s) %(message)s',
@@ -24,15 +26,16 @@ logging.basicConfig(level=logging.INFO,
 class UpdateAction:
     # url must always be set by caller
     def __init__(self, client=None, url='url',
-                 hostname='http://mgmt.foundries.io/leshan', monitor=False):
+                 hostname='http://mgmt.foundries.io/leshan'):
         self.client = client;
         self.url = url;
         self.hostname = hostname;
-        self.monitor = monitor;
         self.download_status = 0;
         self.update_result = 0;
-        self.time_start = datetime.datetime.now();
-        self.time_end = datetime.datetime.now();
+        self.download_time_start = datetime.datetime.now();
+        self.download_time_end = datetime.datetime.now();
+        self.update_time_start = datetime.datetime.now();
+        self.update_time_end = datetime.datetime.now();
         self.result = False;
         self.requested = False;
         self.abort_thread = False;
@@ -96,14 +99,14 @@ def put(url, data):
         logging.error(response)
         return False
 
-def update(ua, thread_count):
-    ua.time_start = datetime.datetime.now()
+def download(ua, thread_count):
+    ua.download_time_start = datetime.datetime.now()
     download_status_url = '%s/api/clients/%s/5/0/3' % (ua.hostname, ua.client)
     update_result_url = '%s/api/clients/%s/5/0/5' % (ua.hostname, ua.client)
-    while ua.abort_thread == False:
+    while not ua.abort_thread:
         ua.download_status = get(download_status_url)
         if ua.download_status == 0:
-            if ua.requested == False:
+            if not ua.requested:
                 logging.info('ready for firmware update')
                 firmware = {'id': 1, 'value': ua.url}
                 firmware_url = '%s/api/clients/%s/5/0/1' % (ua.hostname, ua.client)
@@ -114,10 +117,6 @@ def update(ua, thread_count):
                     ua.result = False
                     break
                 ua.requested = True
-                if not ua.monitor:
-                    logging.info('not monitoring device -- end of update')
-                    ua.result = True
-                    break
             else:
                 ua.update_result = get(update_result_url)
                 logging.error('failed to start firmware download (%d)', ua.update_result)
@@ -127,40 +126,47 @@ def update(ua, thread_count):
             logging.info('downloading firmware')
         if ua.download_status == 2:
             logging.info('ready to apply update')
-            exec_update_url = '%s/api/clients/%s/5/0/2' % (ua.hostname, ua.client)
-            if (post(exec_update_url)):
-                logging.info('requested firmware update execution')
-                check = True
-                while (not ua.abort_thread and check):
-                    ua.update_result = get(update_result_url)
-                    if ua.update_result == 1:
-                        logging.info('firmware update successful')
-                        check = False
-                    elif ua.update_result > 1:
-                        logging.error('firmware update failed (%d)', ua.update_result)
-                        check = False
-                    else:
-                        # TODO check timeout / bad update status
-                        time.sleep(thread_wait)
-            else:
-                logging.error('failed to request firmware update execution')
-                ua.result = False
-                break
-            logging.info('update completed')
             ua.result = True
             break
         if ua.download_status == 3:
-            logging.info('executing the firmware update')
+            logging.info('untriggered: executing the firmware update')
+            ua.result = False
+            break
         if ua.download_status == 4:
             logging.error('unknown status')
         if ua.download_status < 0:
             logging.error('no longer found')
         # TODO check timeout?
-        time.sleep(thread_wait)
-    ua.time_end = datetime.datetime.now()
+        time.sleep(download_thread_wait)
+    ua.download_time_end = datetime.datetime.now()
     thread_count.dec()
 
-def run(client, url, hostname, monitor, device, max_threads):
+def update(ua, thread_count):
+    ua.update_time_start = datetime.datetime.now()
+    exec_update_url = '%s/api/clients/%s/5/0/2' % (ua.hostname, ua.client)
+    if (post(exec_update_url)):
+        logging.info('requested firmware update execution')
+        check = True
+        while (not ua.abort_thread and check):
+            update_result_url = '%s/api/clients/%s/5/0/5' % (ua.hostname, ua.client)
+            ua.update_result = get(update_result_url)
+            if ua.update_result == 1:
+                logging.info('firmware update successful')
+                check = False
+            elif ua.update_result > 1:
+                logging.error('firmware update failed (%d)', ua.update_result)
+                result = False
+                check = False
+            else:
+                # TODO check timeout / bad update status
+                time.sleep(update_thread_wait)
+    else:
+        logging.error('failed to request firmware update execution')
+        result = False
+    ua.update_time_end = datetime.datetime.now()
+    thread_count.dec()
+
+def run(client, url, hostname, device, max_threads):
     global aborted
 
     start_time = datetime.datetime.now()
@@ -169,43 +175,61 @@ def run(client, url, hostname, monitor, device, max_threads):
     response = get(client_list_url, raw=True)
     if response:
         for target in response:
-            perform_update = True
+            start_download = True
             if 'endpoint' in target:
                 if client:
                     # check for a partial match of the endpoint
                     if not client in target['endpoint']:
-                        perform_update = False
-                if perform_update and device:
+                        start_download = False
+                if start_download and device:
                     endpoint_url = '%s/api/clients/%s/3/0/1'  % (hostname, target['endpoint'])
                     endpoint_device = get(endpoint_url)
                     if (endpoint_device != device):
-                        perform_update = False
-                if perform_update:
+                        start_download = False
+                if start_download:
                     # check for max threads and wait if needed
                     while (not aborted and thread_count.value >= max_threads):
-                        time.sleep(thread_wait)
+                        time.sleep(loop_thread_wait)
                     if (not aborted):
                         # bump thread count
                         thread_count.inc()
                         # append a new update action
-                        ua = UpdateAction(target['endpoint'], url, hostname, monitor)
+                        ua = UpdateAction(target['endpoint'], url, hostname)
                         update_list.append(ua)
                         # create a new thread
-                        t = threading.Thread(name=target['endpoint'], target=update,
+                        t = threading.Thread(name=ua.client, target=download,
                                              args=(ua, thread_count,))
                         t.start()
         while (thread_count.value > 0):
             # TODO check timeout?
-            time.sleep(thread_wait)
+            time.sleep(loop_thread_wait)
+
+    # We haven't triggered the updates yet:
+    # loop through update_list and trigger successful downloads
+    if (not aborted):
+        for ua in update_list:
+            if not ua.abort_thread and ua.result:
+                # bump thread count
+                thread_count.inc()
+                # create a new thread
+                t = threading.Thread(name=ua.client, target=update,
+                                     args=(ua, thread_count,))
+                t.start()
+
+        while (thread_count.value > 0):
+            # TODO check timeout?
+            time.sleep(loop_thread_wait)
+
     # dump update info
     logging.info('UPDATE SUMMARY:')
     result = 0
     count = 0
     for ua in update_list:
         count += 1
-        timediff = ua.time_end - ua.time_start
+        timediff = ua.download_time_end - ua.download_time_start
+        timediff += ua.update_time_end - ua.update_time_start
         if ua.abort_thread == True:
-            logging.info('[%s] update ABORTED (%d seconds)', ua.client, timediff.seconds)
+            logging.info('[%s] update ABORTED', ua.client)
         elif ua.result:
             logging.info('[%s] update SUCCESS (%d seconds)', ua.client, timediff.seconds)
         else:
@@ -224,11 +248,10 @@ def main():
     parser.add_argument('-c', '--client', help='Leshan Client ID, if not specified all targets will be updated', default=None)
     parser.add_argument('-u', '--url', help='URL for client firmware (http:// or coap://)', required=True)
     parser.add_argument('-host', '--hostname', help='Leshan server URL', default='https://mgmt.foundries.io/leshan')
-    parser.add_argument('-m', '--monitor', help='Monitor the update', action='store_true', default=False)
     parser.add_argument('-d', '--device', help='Device type filter', default=None)
-    parser.add_argument('-t', '--threads', help='Maximum threads', default=1)
+    parser.add_argument('-t', '--threads', help='Maximum download threads', default=1)
     args = parser.parse_args()
-    run(args.client, args.url, args.hostname, args.monitor, args.device, int(args.threads))
+    run(args.client, args.url, args.hostname, args.device, int(args.threads))
 
 if __name__ == '__main__':
     main()
