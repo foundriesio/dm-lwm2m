@@ -40,8 +40,10 @@ endif # FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
-	select NET_IPV6
-	select NET_CONFIG_NEED_IPV6
+	select NET_IPV6 if !MODEM
+	select NET_CONFIG_NEED_IPV6 if !MODEM
+	select NET_IPV4 if MODEM
+	select NET_CONFIG_NEED_IPV4 if MODEM
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
@@ -70,7 +72,7 @@ if FOTA_DEVICE_SOC_SERIES_NRF52X
 config TEMP_NRF5_NAME
 	default "fota-temp"
 
-if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
+if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
 
 config BT
 	default y
@@ -137,7 +139,7 @@ config BT_CTLR_CONN_PARAM_REQ
 config BT_CTLR_ADV_EXT
 	default n
 
-endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154
+endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
 
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
 
