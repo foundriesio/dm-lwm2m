@@ -90,16 +90,14 @@ config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
 	default y
 
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
-	default "coap://[fe80::d4e7:0:0:1]:5682"
-
-config NET_CONFIG_PEER_IPV6_ADDR
-	default "fe80::d4e7:0:0:1"
+	default "coap://[fd11:11::1]:5682"
 
 config NET_L2_BT
 	default y
 
+# Need time for RADVD settings
 config NET_CONFIG_INIT_TIMEOUT
-	default 0
+	default 30
 
 config BT_RX_BUF_COUNT
 	default 10
@@ -156,6 +154,11 @@ config NET_IF_MCAST_IPV6_ADDR_COUNT
 config NET_RX_STACK_SIZE
 	default 5120 if NET_L2_OPENTHREAD
 	default 2048
+
+config DNS_SERVER1
+	default "fd11:11::1" if BT
+	default "fd11:22::1" if NET_L2_OPENTHREAD
+	default "8.8.8.8"
 
 module = FOTA
 module-dep = LOG
