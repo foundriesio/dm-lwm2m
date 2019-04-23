@@ -454,7 +454,7 @@ static void rd_client_event(struct lwm2m_ctx *client,
 
 	case LWM2M_RD_CLIENT_EVENT_BOOTSTRAP_REG_FAILURE:
 		if (tc_logging) {
-			_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
+			Z_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
 			TC_END_REPORT(TC_FAIL);
 			tc_logging = false;
 		}
@@ -470,7 +470,7 @@ static void rd_client_event(struct lwm2m_ctx *client,
 
 	case LWM2M_RD_CLIENT_EVENT_REGISTRATION_FAILURE:
 		if (tc_logging) {
-			_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
+			Z_TC_END_RESULT(TC_FAIL, "lwm2m_registration");
 			TC_END_REPORT(TC_FAIL);
 			tc_logging = false;
 		}
@@ -478,7 +478,7 @@ static void rd_client_event(struct lwm2m_ctx *client,
 
 	case LWM2M_RD_CLIENT_EVENT_REGISTRATION_COMPLETE:
 		if (tc_logging) {
-			_TC_END_RESULT(TC_PASS, "lwm2m_registration");
+			Z_TC_END_RESULT(TC_PASS, "lwm2m_registration");
 		}
 		break;
 
@@ -645,7 +645,7 @@ static void lwm2m_reg_update_result(struct k_work *work)
 		if (result == TC_FAIL) {
 			final_result = TC_FAIL;
 		}
-		_TC_END_RESULT(result, result_name);
+		Z_TC_END_RESULT(result, result_name);
 	}
 	TC_END_REPORT(final_result);
 	tc_logging = false;
@@ -661,21 +661,21 @@ static void lwm2m_start(struct k_work *work)
 	ret = lwm2m_image_init();
 	if (ret < 0) {
 		LOG_ERR("Failed to setup image properties (%d)", ret);
-		_TC_END_RESULT(TC_FAIL, "lwm2m_image_init");
+		Z_TC_END_RESULT(TC_FAIL, "lwm2m_image_init");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "lwm2m_image_init");
+	Z_TC_END_RESULT(TC_PASS, "lwm2m_image_init");
 
 	TC_PRINT("Initializing LWM2M Engine\n");
 	ret = lwm2m_setup();
 	if (ret < 0) {
 		LOG_ERR("Cannot setup LWM2M fields (%d)", ret);
-		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
+		Z_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "lwm2m_setup");
+	Z_TC_END_RESULT(TC_PASS, "lwm2m_setup");
 
 	/* initialize test case data */
 	update_data.failures = 0;
@@ -714,7 +714,7 @@ int lwm2m_init(struct k_work_q *work_q)
 	iface = net_if_get_default();
 	if (!iface) {
 		LOG_ERR("Cannot find default network interface!");
-		_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
+		Z_TC_END_RESULT(TC_FAIL, "lwm2m_setup");
 		TC_END_REPORT(TC_FAIL);
 		return -ENETDOWN;
 	}

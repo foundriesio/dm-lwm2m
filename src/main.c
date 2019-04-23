@@ -105,29 +105,29 @@ void main(void)
 
 	TC_PRINT("Initializing LWM2M IPSO Temperature Sensor\n");
 	if (init_temp_device()) {
-		_TC_END_RESULT(TC_FAIL, "init_temp_device");
+		Z_TC_END_RESULT(TC_FAIL, "init_temp_device");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
 	lwm2m_engine_create_obj_inst("3303/0");
 	lwm2m_engine_register_read_callback("3303/0/5700", temp_read_cb);
 	lwm2m_engine_set_string("3303/0/5701", "Cel");
-	_TC_END_RESULT(TC_PASS, "init_temp_device");
+	Z_TC_END_RESULT(TC_PASS, "init_temp_device");
 
 	TC_PRINT("Initializing IPSO Light Control\n");
 	if (init_light_control()) {
-		_TC_END_RESULT(TC_FAIL, "init_light_control");
+		Z_TC_END_RESULT(TC_FAIL, "init_light_control");
 		TC_END_REPORT(TC_FAIL);
 		return;
 	}
-	_TC_END_RESULT(TC_PASS, "init_light_control");
+	Z_TC_END_RESULT(TC_PASS, "init_light_control");
 
 	TC_PRINT("Initializing FOTA settings\n");
 	if (fota_settings_init()) {
-		_TC_END_RESULT(TC_FAIL, "fota_settings_init");
+		Z_TC_END_RESULT(TC_FAIL, "fota_settings_init");
 		TC_END_REPORT(TC_FAIL);
 	}
-	_TC_END_RESULT(TC_PASS, "fota_settings_init");
+	Z_TC_END_RESULT(TC_PASS, "fota_settings_init");
 
 	/* Load *all* persistent settings */
 	settings_load();
