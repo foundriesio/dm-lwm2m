@@ -90,6 +90,7 @@ config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
 	default y
 
 config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
+	default "coap://[fd11:22::1]:5682" if NET_L2_OPENTHREAD
 	default "coap://[fd11:11::1]:5682"
 
 config NET_L2_BT
