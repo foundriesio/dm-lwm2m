@@ -1,0 +1,76 @@
+config BT
+	default y
+
+config BT_CTLR
+	default y
+
+config NET_L2_BT
+	default y
+
+config NET_CONFIG_BT_NODE
+	default y
+
+config BT_DEVICE_NAME
+	default "ZMP IPSP node"
+
+# Need time for RADVD settings
+config NET_CONFIG_INIT_TIMEOUT
+	default 30
+
+config BT_RX_BUF_COUNT
+	default 10
+
+config BT_RX_BUF_LEN
+	default 128
+
+config BT_CTLR_RX_BUFFERS
+	default 6
+
+config BT_CTLR_TX_BUFFERS
+	default 7
+
+config BT_RX_STACK_SIZE
+	default 2048
+
+config BT_L2CAP_TX_BUF_COUNT
+	default 6
+
+config BT_SMP
+	default y
+
+config BT_PERIPHERAL
+	default y
+
+config BT_CENTRAL
+	default y
+
+config BT_L2CAP_DYNAMIC_CHANNEL
+	default y
+
+# The following BT configs are not needed in peripheral mode.
+
+config BT_CTLR_CONN_PARAM_REQ
+	default n
+
+config BT_CTLR_ADV_EXT
+	default n
+
+# Network settings
+
+config NET_CONFIG_INIT_TIMEOUT
+	default 30
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2
+
+config DNS_SERVER1
+	default "fd11:11::1"
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
+	default y
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
+	default "coap://[fd11:11::1]:5682"
