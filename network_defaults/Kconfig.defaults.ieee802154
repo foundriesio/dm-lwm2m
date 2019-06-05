@@ -1,0 +1,28 @@
+config IEEE802154
+	default y
+
+config NET_L2_IEEE802154
+	default y
+
+config NET_L2_IEEE802154_SHELL
+	default y
+
+# Network settings
+
+config NET_CONFIG_INIT_TIMEOUT
+	default 30
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 3
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 2
+
+config DNS_SERVER1
+	default "fd11:33::1"
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
+	default y
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
+	default "coap://[fd11:33::1]:5682"

@@ -6,11 +6,51 @@
 
 mainmenu "LWM2M application configuration"
 
+choice
+	prompt "FOTA network interface"
+	default FOTA_NET_OPENTHREAD if SOC_NRF52840
+	default FOTA_NET_BLE6LOWPAN if SOC_NRF52832
+	default FOTA_NET_DEFAULT
+	help
+	  This selection represents an abstract choice for network interface
+	  which in turn allows us to set the HW specific configs.
+
+config FOTA_NET_OPENTHREAD
+	bool "OpenThread"
+	help
+	  Connect to host via OpenThread
+
+config FOTA_NET_802154
+	bool "IEEE 802.15.4"
+	help
+	  Connect to host via IEEE 802.15.4
+
+config FOTA_NET_BLE6LOWPAN
+	bool "BLE 6LoWPAN"
+	help
+	  Connect to host via BLE / 6LoWPAN
+
+config FOTA_NET_MODEM
+	bool "Modem"
+	help
+	  Connect to host via modem
+
+config FOTA_NET_DEFAULT
+	bool "Other"
+	help
+	  Connect to host via HW default method (ethernet, etc)
+
+endchoice
+
 config FOTA_DEVICE
 	bool "Enable FOTA device settings"
 	default y
 	select FOTA_DEVICE_SOC_SERIES_KINETIS_K6X if SOC_SERIES_KINETIS_K6X
 	select FOTA_DEVICE_SOC_SERIES_NRF52X if SOC_SERIES_NRF52X
+	select NET_IPV6 if FOTA_NET_OPENTHREAD || FOTA_NET_BLE6LOWPAN || FOTA_NET_802154
+	select NET_CONFIG_NEED_IPV6 if FOTA_NET_OPENTHREAD || FOTA_NET_BLE6LOWPAN || FOTA_NET_802154
+	select NET_IPV4 if FOTA_NET_MODEM
+	select NET_CONFIG_NEED_IPV4 if FOTA_NET_MODEM
 	help
 	  Main config to enable device specific settings
 
@@ -23,7 +63,6 @@ config FOTA_ENDPOINT_PREFIX
 
 config FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 	bool "Kinetis K6x FOTA settings"
-	depends on !NET_L2_OPENTHREAD
 	select NET_SHELL
 	select NET_IPV4
 	select NET_UDP
@@ -35,15 +74,13 @@ if FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 # IPv6 is enabled by default in Zephyr's Kconfig when networking is selected.
 config NET_IPV6
 	default n
+config NET_CONFIG_NEED_IPV6
+	default n
 
 endif # FOTA_DEVICE_SOC_SERIES_KINETIS_K6X
 
 config FOTA_DEVICE_SOC_SERIES_NRF52X
 	bool "Nordic Semiconductor nRF52 FOTA settings"
-	select NET_IPV6 if !MODEM
-	select NET_CONFIG_NEED_IPV6 if !MODEM
-	select NET_IPV4 if MODEM
-	select NET_CONFIG_NEED_IPV4 if MODEM
 	select SENSOR
 	select TEMP_NRF5
 	select ENTROPY_NRF5_RNG
@@ -72,94 +109,36 @@ if FOTA_DEVICE_SOC_SERIES_NRF52X
 config TEMP_NRF5_NAME
 	default "fota-temp"
 
-if !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
-
-config BT
-	default y
-
-config BT_CTLR
-	default y
-
-config NET_CONFIG_BT_NODE
-	default y
-
-config BT_DEVICE_NAME
-	default "ZMP IPSP node"
-
-config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
-	default y
-
-config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
-	default "coap://[fd11:22::1]:5682" if NET_L2_OPENTHREAD
-	default "coap://[fd11:11::1]:5682"
-
-config NET_L2_BT
-	default y
-
-# Need time for RADVD settings
-config NET_CONFIG_INIT_TIMEOUT
-	default 30
-
-config BT_RX_BUF_COUNT
-	default 10
-
-config BT_RX_BUF_LEN
-	default 128
-
-config BT_CTLR_RX_BUFFERS
-	default 6
-
-config BT_CTLR_TX_BUFFERS
-	default 7
-
-config BT_RX_STACK_SIZE
-	default 2048
-
-config BT_L2CAP_TX_BUF_COUNT
-	default 6
-
-config BT_SMP
-	default y
-
-config BT_PERIPHERAL
-	default y
-
-config BT_CENTRAL
-	default y
-
-config BT_L2CAP_DYNAMIC_CHANNEL
-	default y
-
-# The following BT configs are not needed in peripheral mode.
-
-config BT_CTLR_CONN_PARAM_REQ
-	default n
-
-config BT_CTLR_ADV_EXT
-	default n
-
-endif # !NET_L2_OPENTHREAD && !NET_L2_IEEE802154 && !MODEM
-
 endif # FOTA_DEVICE_SOC_SERIES_NRF52X
+
+# OpenThread settings
+if FOTA_NET_OPENTHREAD
+rsource "network_defaults/Kconfig.defaults.ot"
+endif # FOTA_NET_OPENTHREAD
+
+# IEEE 802.15.4 Settings
+if FOTA_NET_802154
+rsource "network_defaults/Kconfig.defaults.ieee802154"
+endif # FOTA_NET_802154
+
+# BLE / 6LoWPAN settings
+if FOTA_NET_BLE6LOWPAN
+rsource "network_defaults/Kconfig.defaults.ble6lowpan"
+endif # FOTA_NET_BLE6LOWPAN
+
+# Modem Settings
+if FOTA_NET_MODEM
+rsource "network_defaults/Kconfig.defaults.modem"
+endif # FOTA_NET_MODEM
 
 # General defaults
 
-config NET_IF_UNICAST_IPV6_ADDR_COUNT
-	default 3 if BT
-	default 6 if NET_L2_OPENTHREAD
-
-config NET_IF_MCAST_IPV6_ADDR_COUNT
-	default 2 if BT
-	default 8 if NET_L2_OPENTHREAD
-
 config NET_RX_STACK_SIZE
-	default 5120 if NET_L2_OPENTHREAD
+	default 5120 if FOTA_NET_OPENTHREAD
 	default 2048
 
 config DNS_SERVER1
-	default "fd11:11::1" if BT
-	default "fd11:22::1" if NET_L2_OPENTHREAD
-	default "8.8.8.8"
+	default "8.8.8.8" if FOTA_NET_MODEM || FOTA_NET_DEFAULT
 
 module = FOTA
 module-dep = LOG

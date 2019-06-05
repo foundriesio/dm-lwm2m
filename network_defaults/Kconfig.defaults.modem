@@ -1,0 +1,13 @@
+config MODEM
+	default y
+
+config MODEM_SHELL
+	default y
+
+# Avoid having to set a local IP for the modem
+config NET_CONFIG_MY_IPV4_ADDR
+	default "192.168.0.1"
+
+# extend retry timing to 20 seconds for LTE/LTE-M
+config COAP_INIT_ACK_TIMEOUT_MS
+	default 20000

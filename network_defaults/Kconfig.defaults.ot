@@ -1,0 +1,44 @@
+config NET_L2_OPENTHREAD
+	default y
+
+# Enable C++ for OpenThread stack compilation
+config CPLUSPLUS
+	default y
+
+# Enable flash page layout extension
+config FLASH_PAGE_LAYOUT
+	default y
+
+# OpenThread requires larger stack sizes
+
+config MAIN_STACK_SIZE
+	default 2048
+
+config NET_TX_STACK_SIZE
+	default 2048
+
+# Network settings
+
+# OpenThread doesn't use NS/NA
+config NET_IPV6_NBR_CACHE
+	default n
+config NET_IPV6_MLD
+	default n
+
+config NET_CONFIG_INIT_TIMEOUT
+	default 90
+
+config NET_IF_UNICAST_IPV6_ADDR_COUNT
+	default 6
+
+config NET_IF_MCAST_IPV6_ADDR_COUNT
+	default 8
+
+config DNS_SERVER1
+	default "fd11:22::1"
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_SUPPORT
+	default y
+
+config LWM2M_FIRMWARE_UPDATE_PULL_COAP_PROXY_ADDR
+	default "coap://[fd11:22::1]:5682"
