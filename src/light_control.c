@@ -17,6 +17,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
 /* Defines for the IPSO light-control elements */
 #define LED_GPIO_PIN		LED0_GPIO_PIN
+#define LED_GPIO_FLAGS		LED0_GPIO_FLAGS
 #if defined(LED0_GPIO_PORT)
 #define LED_GPIO_PORT		LED0_GPIO_PORT
 #else
@@ -77,7 +78,8 @@ int init_light_control(void)
 		goto fail;
 	}
 
-	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN, GPIO_DIR_OUT);
+	ret = gpio_pin_configure(led_dev, LED_GPIO_PIN,
+				 GPIO_DIR_OUT | LED_GPIO_FLAGS);
 	if (ret) {
 		LOG_ERR("Error configuring LED GPIO.");
 		goto fail;
