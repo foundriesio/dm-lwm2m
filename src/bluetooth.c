@@ -107,8 +107,6 @@ static int bt_network_init(struct device *dev)
 	LOG_INF("Bluetooth MAC: %02x:%02x:%02x:%02x:%02x:%02x",
 		bt_addr.a.val[5], bt_addr.a.val[4], bt_addr.a.val[3],
 		bt_addr.a.val[2], bt_addr.a.val[1], bt_addr.a.val[0]);
-	LOG_INF("Device: %s, Serial: %08x",
-		product_id_get()->name, product_id_get()->number);
 	ret = bt_set_id_addr(&bt_addr);
 	bt_conn_cb_register(&conn_callbacks);
 

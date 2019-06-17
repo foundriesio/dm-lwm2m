@@ -4,6 +4,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#define LOG_MODULE_NAME fota_product
+#define LOG_LEVEL CONFIG_FOTA_LOG_LEVEL
+
+#include <logging/log.h>
+LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
 #include <stdio.h>
 #include <zephyr.h>
 #include <init.h>
@@ -62,6 +68,9 @@ static int product_id_init(struct device *dev)
 	}
 
 	product_id.number = hash32(buffer, DEVICE_ID_LENGTH*8);
+
+	LOG_INF("Device: %s, Serial: %08x",
+		product_id_get()->name, product_id_get()->number);
 
 	return 0;
 }
