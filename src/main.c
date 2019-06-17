@@ -98,8 +98,6 @@ void main(void)
 	app_wq_init();
 
 	LOG_INF("Open Source Foundries FOTA LWM2M example application");
-	LOG_INF("Device: %s, Serial: %08x",
-		product_id_get()->name, product_id_get()->number);
 
 	TC_START("Running Built in Self Test (BIST)");
 
